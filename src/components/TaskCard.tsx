@@ -1,4 +1,4 @@
-import { Calendar, GripVertical } from 'lucide-react'
+import { Calendar, GripVertical, Paperclip } from 'lucide-react'
 import type { Task } from '../types'
 import { useApp } from '../store/AppContext'
 import { formatDate, isOverdue } from '../utils/helpers'
@@ -52,7 +52,18 @@ export function TaskCard({
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <PriorityBadge priority={task.priority} />
+            <div className="flex items-center gap-2">
+              <PriorityBadge priority={task.priority} />
+              {task.attachments && task.attachments.length > 0 && (
+                <span
+                  className="flex items-center gap-0.5 text-xs text-slate-400"
+                  title={`${task.attachments.length} allegati`}
+                >
+                  <Paperclip className="w-3.5 h-3.5" />
+                  {task.attachments.length}
+                </span>
+              )}
+            </div>
 
             <div className="flex items-center gap-2 shrink-0">
               {task.dueDate && (

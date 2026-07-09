@@ -8,11 +8,21 @@ export interface TeamMember {
   role: string
   color: string
 }
-
+export interface Attachment {
+  id: string
+  taskid?: string
+  fileName: string
+  path: string
+  type: string
+  size: number
+}
 export interface Task {
   id: string
   title: string
   description: string
+  notes: string
+  links: string[]
+  attachments: Attachment[]
   status: TaskStatus
   priority: TaskPriority
   assigneeId: string | null

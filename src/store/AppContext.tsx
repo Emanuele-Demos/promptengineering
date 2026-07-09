@@ -22,7 +22,18 @@ const STORAGE_KEY = 'teamflow-data'
 function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as AppState
+    if (raw) {
+      const parsed = JSON.parse(raw) as AppState
+      if (parsed && Array.isArray(parsed.tasks)) {
+        parsed.tasks = parsed.tasks.map(task => ({
+          ...task,
+          notes: task.notes ?? '',
+          links: task.links ?? [],
+          attachments: task.attachments ?? []
+        }))
+      }
+      return parsed
+    }
   } catch {
     /* ignore corrupt data */
   }
@@ -77,7 +88,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...prev,
         tasks: [
           ...prev.tasks,
-          { ...task, id: uuid(), createdAt: now, updatedAt: now },
+          {
+            notes: '',
+            links: [],
+            attachments: [],
+            ...task,
+            id: uuid(),
+            createdAt: now,
+            updatedAt: now
+          },
         ],
       }))
     },

@@ -6,6 +6,7 @@ import {
   STATUS_LABELS,
 } from '../types'
 import { useApp } from '../store/AppContext'
+import { AttachmentUploader } from './AttachmentUploader'
 
 interface TaskModalProps {
   task?: Task | null
@@ -17,6 +18,9 @@ interface TaskModalProps {
 const emptyForm = {
   title: '',
   description: '',
+  notes: '',
+  links: '',
+  attachments: [],
   status: 'todo' as TaskStatus,
   priority: 'medium' as TaskPriority,
   assigneeId: '' as string,
@@ -40,6 +44,9 @@ export function TaskModal({
       setForm({
         title: task.title,
         description: task.description,
+        notes: task.notes,
+        links: task.links.join(', '),
+        attachments: task.attachments,
         status: task.status,
         priority: task.priority,
         assigneeId: task.assigneeId ?? '',
@@ -60,6 +67,12 @@ export function TaskModal({
     const payload = {
       title: form.title.trim(),
       description: form.description.trim(),
+      notes: form.notes.trim(),
+      links: form.links
+        .split(',')
+        .map((l) => l.trim())
+        .filter(Boolean),
+      attachments: form.attachments,
       status: form.status,
       priority: form.priority,
       assigneeId: form.assigneeId || null,
@@ -133,7 +146,36 @@ export function TaskModal({
               placeholder="Dettagli del task..."
             />
           </div>
+          <div>
+    <label className="block text-sm font-medium text-slate-700 mb-1">
+        Note
+    </label>
 
+    <textarea
+        rows={5}
+        value={form.notes}
+        onChange={(e)=>
+            setForm({
+                ...form,
+                notes:e.target.value
+            })
+        }
+        className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+        placeholder="Inserisci eventuali note..."
+    />
+</div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Link
+            </label>
+            <input
+              type="text"
+              value={form.links}
+              onChange={(e) => setForm({ ...form, links: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              placeholder="https://esempio.com, https://altro.com (separati da virgola)"
+            />
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -221,6 +263,16 @@ export function TaskModal({
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="backend, urgent (separati da virgola)"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Allegati
+            </label>
+            <AttachmentUploader
+              attachments={form.attachments}
+              onChange={(attachments) => setForm({ ...form, attachments })}
             />
           </div>
 

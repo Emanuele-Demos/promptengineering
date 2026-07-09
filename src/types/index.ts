@@ -23,6 +23,12 @@ export interface Folder {
   color: string
 }
 
+export interface Folder {
+  id: string
+  name: string
+  color: string
+}
+
 export interface Task {
   id: string
   title: string

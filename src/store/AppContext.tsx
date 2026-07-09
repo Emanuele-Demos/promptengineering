@@ -22,7 +22,27 @@ const STORAGE_KEY = 'teamflow-data'
 function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as AppState
+    if (raw) {
+      const state = JSON.parse(raw) as AppState
+      const oldCategoryNames = ['Lavoro', 'Casa', 'Università']
+      const hasOldCategories = state.categories.some((c) => oldCategoryNames.includes(c.name))
+      if (hasOldCategories || state.categories.length === 0) {
+        state.categories = [
+          { id: 'c1', name: 'managemement', color: '#ef4444' },
+          { id: 'c2', name: 'clienti', color: '#3b82f6' },
+          { id: 'c3', name: 'fatture', color: '#10b981' },
+          { id: 'c4', name: 'varie', color: '#f59e0b' },
+        ]
+        state.tasks = state.tasks.map((t) => {
+          if (t.categoryId && !['c1', 'c2', 'c3', 'c4'].includes(t.categoryId)) {
+            return { ...t, categoryId: null }
+          }
+          return t
+        })
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      }
+      return state
+    }
   } catch {
     /* ignore corrupt data */
   }
@@ -38,9 +58,14 @@ interface AppContextValue extends AppState {
   updateTask: (id: string, updates: Partial<Task>) => void
   deleteTask: (id: string) => void
   moveTask: (id: string, status: TaskStatus) => void
+  moveTaskPosition: (taskId: string, direction: 'up' | 'down' | 'top') => void
+  dragReorderTasks: (draggedId: string, targetId: string) => void
   addMember: (member: Omit<TeamMember, 'id' | 'color'>) => void
   updateMember: (id: string, updates: Partial<TeamMember>) => void
   deleteMember: (id: string) => void
+  addCategory: (name: string, color: string) => void
+  updateCategory: (id: string, name: string, color: string) => void
+  deleteCategory: (id: string) => void
   resetData: () => void
   getMember: (id: string | null) => TeamMember | undefined
   tasksByStatus: (status: TaskStatus) => Task[]
@@ -115,6 +140,71 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [updateTask],
   )
 
+  const moveTaskPosition = useCallback(
+    (taskId: string, direction: 'up' | 'down' | 'top') => {
+      commit((prev) => {
+        const tasks = [...prev.tasks]
+        const index = tasks.findIndex((t) => t.id === taskId)
+        if (index === -1) return prev
+
+        const targetTask = tasks[index]
+        const catId = targetTask.categoryId
+
+        // Find all tasks in the same category
+        const catTasksIndices = tasks
+          .map((t, idx) => (t.categoryId === catId ? idx : -1))
+          .filter((idx) => idx !== -1)
+
+        const relativeIndex = catTasksIndices.indexOf(index)
+        if (relativeIndex === -1) return prev
+
+        if (direction === 'up' && relativeIndex > 0) {
+          const swapIndex = catTasksIndices[relativeIndex - 1]
+          tasks[index] = tasks[swapIndex]
+          tasks[swapIndex] = targetTask
+        } else if (direction === 'down' && relativeIndex < catTasksIndices.length - 1) {
+          const swapIndex = catTasksIndices[relativeIndex + 1]
+          tasks[index] = tasks[swapIndex]
+          tasks[swapIndex] = targetTask
+        } else if (direction === 'top' && relativeIndex > 0) {
+          const firstCatIndex = catTasksIndices[0]
+          tasks.splice(index, 1)
+          tasks.splice(firstCatIndex, 0, targetTask)
+        }
+
+        return {
+          ...prev,
+          tasks,
+        }
+      })
+    },
+    [commit],
+  )
+
+  const dragReorderTasks = useCallback(
+    (draggedId: string, targetId: string) => {
+      commit((prev) => {
+        const tasks = [...prev.tasks]
+        const draggedIndex = tasks.findIndex((t) => t.id === draggedId)
+        const targetIndex = tasks.findIndex((t) => t.id === targetId)
+
+        if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
+          return prev
+        }
+
+        const [draggedTask] = tasks.splice(draggedIndex, 1)
+        const adjustedTargetIndex = tasks.findIndex((t) => t.id === targetId)
+        tasks.splice(adjustedTargetIndex, 0, draggedTask)
+
+        return {
+          ...prev,
+          tasks,
+        }
+      })
+    },
+    [commit],
+  )
+
   const addMember = useCallback(
     (member: Omit<TeamMember, 'id' | 'color'>) => {
       commit((prev) => ({
@@ -151,6 +241,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
         members: prev.members.filter((m) => m.id !== id),
         tasks: prev.tasks.map((t) =>
           t.assigneeId === id ? { ...t, assigneeId: null } : t,
+        ),
+      }))
+    },
+    [commit],
+  )
+
+  const addCategory = useCallback(
+    (name: string, color: string) => {
+      commit((prev) => ({
+        ...prev,
+        categories: [
+          ...prev.categories,
+          { id: uuid(), name, color },
+        ],
+      }))
+    },
+    [commit],
+  )
+
+  const updateCategory = useCallback(
+    (id: string, name: string, color: string) => {
+      commit((prev) => ({
+        ...prev,
+        categories: prev.categories.map((c) =>
+          c.id === id ? { ...c, name, color } : c,
+        ),
+      }))
+    },
+    [commit],
+  )
+
+  const deleteCategory = useCallback(
+    (id: string) => {
+      commit((prev) => ({
+        ...prev,
+        categories: prev.categories.filter((c) => c.id !== id),
+        tasks: prev.tasks.map((t) =>
+          t.categoryId === id ? { ...t, categoryId: null } : t,
         ),
       }))
     },
@@ -213,9 +341,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateTask,
       deleteTask,
       moveTask,
+      moveTaskPosition,
+      dragReorderTasks,
       addMember,
       updateMember,
       deleteMember,
+      addCategory,
+      updateCategory,
+      deleteCategory,
       resetData,
       getMember,
       tasksByStatus,
@@ -228,9 +361,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateTask,
       deleteTask,
       moveTask,
+      moveTaskPosition,
+      dragReorderTasks,
       addMember,
       updateMember,
       deleteMember,
+      addCategory,
+      updateCategory,
+      deleteCategory,
       resetData,
       getMember,
       tasksByStatus,

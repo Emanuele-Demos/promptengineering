@@ -22,6 +22,7 @@ const emptyForm = {
   assigneeId: '' as string,
   dueDate: '',
   tags: '',
+  categoryId: '',
 }
 
 export function TaskModal({
@@ -30,7 +31,7 @@ export function TaskModal({
   open,
   onClose,
 }: TaskModalProps) {
-  const { members, addTask, updateTask, deleteTask } = useApp()
+  const { members, categories, addTask, updateTask, deleteTask } = useApp()
   const isEditing = !!task
 
   const [form, setForm] = useState(emptyForm)
@@ -45,6 +46,7 @@ export function TaskModal({
         assigneeId: task.assigneeId ?? '',
         dueDate: task.dueDate ?? '',
         tags: task.tags.join(', '),
+        categoryId: task.categoryId ?? '',
       })
     } else {
       setForm({ ...emptyForm, status: defaultStatus })
@@ -64,6 +66,7 @@ export function TaskModal({
       priority: form.priority,
       assigneeId: form.assigneeId || null,
       dueDate: form.dueDate || null,
+      categoryId: form.categoryId || null,
       tags: form.tags
         .split(',')
         .map((t) => t.trim())
@@ -176,6 +179,27 @@ export function TaskModal({
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Categoria
+            </label>
+
+            <select
+              value={form.categoryId}
+              onChange={(e) =>
+                setForm({ ...form, categoryId: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+<option value="">Seleziona categoria</option>
+
+{categories.map((category) => (
+  <option key={category.id} value={category.id}>
+    {category.name}
+  </option>
+))}
+            </select>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">

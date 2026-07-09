@@ -4,6 +4,7 @@ import {
   Kanban,
   Users,
   Zap,
+  Folder,
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 
@@ -11,6 +12,7 @@ const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/board', label: 'Board', icon: Kanban },
   { to: '/team', label: 'Team', icon: Users },
+  { to: '/categories', label: 'Categorie', icon: Folder },
 ]
 
 export function Sidebar() {

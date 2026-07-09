@@ -15,6 +15,7 @@ export interface Task {
   description: string
   status: TaskStatus
   priority: TaskPriority
+  categoryId: string | null
   assigneeId: string | null
   dueDate: string | null
   tags: string[]
@@ -25,8 +26,13 @@ export interface Task {
 export interface AppState {
   members: TeamMember[]
   tasks: Task[]
+  categories: Category[]
 }
-
+export interface Category {
+  id: string
+  name: string
+  color: string
+}
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: 'Da fare',
   in_progress: 'In corso',

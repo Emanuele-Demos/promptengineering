@@ -39,7 +39,9 @@ export function getInitials(name: string): string {
 
 export function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('it-IT', {
+  const hasTime = dateStr.includes('T')
+  const dateObj = new Date(hasTime ? dateStr : dateStr + 'T00:00:00')
+  return dateObj.toLocaleDateString('it-IT', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

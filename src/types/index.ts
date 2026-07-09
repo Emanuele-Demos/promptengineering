@@ -22,9 +22,18 @@ export interface Task {
   updatedAt: string
 }
 
+export interface Goal {
+  id: string
+  userId?: string
+  type: 'daily' | 'weekly'
+  target: number
+  createdAt: string
+}
+
 export interface AppState {
   members: TeamMember[]
   tasks: Task[]
+  goals: Goal[]
 }
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {

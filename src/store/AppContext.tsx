@@ -19,12 +19,40 @@ import { MEMBER_COLORS } from '../types'
 
 const STORAGE_KEY = 'teamflow-data'
 
+function sanitizeTask(t: Record<string, unknown>): Task {
+  const now = new Date().toISOString()
+  return {
+    id: String(t.id ?? ''),
+    title: String(t.title ?? ''),
+    description: String(t.description ?? ''),
+    status: (t.status as Task['status']) ?? 'todo',
+    priority: (t.priority as Task['priority']) ?? 'medium',
+    assigneeId: t.assigneeId ? String(t.assigneeId) : null,
+    dueDate: t.dueDate ? String(t.dueDate) : null,
+    tags: Array.isArray(t.tags) ? t.tags.map(String) : [],
+    createdAt: t.createdAt ? String(t.createdAt) : now,
+    updatedAt: t.updatedAt ? String(t.updatedAt) : now,
+  }
+}
+
 function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as AppState
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, unknown>
+      const tasks = Array.isArray(parsed.tasks)
+        ? (parsed.tasks as Record<string, unknown>[]).map(sanitizeTask)
+        : seedData.tasks
+      const members = Array.isArray(parsed.members)
+        ? parsed.members as AppState['members']
+        : seedData.members
+      const goals = Array.isArray(parsed.goals)
+        ? parsed.goals as AppState['goals']
+        : []
+      return { tasks, members, goals }
+    }
   } catch {
-    /* ignore corrupt data */
+    /* ignore corrupt data, fall through to seed */
   }
   return seedData
 }
@@ -45,6 +73,7 @@ interface AppContextValue extends AppState {
   getMember: (id: string | null) => TeamMember | undefined
   tasksByStatus: (status: TaskStatus) => Task[]
   overdueTasks: Task[]
+  setGoal: (type: 'daily' | 'weekly', target: number) => void
   stats: {
     total: number
     done: number
@@ -173,6 +202,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [state.tasks],
   )
 
+  const setGoal = useCallback(
+    (type: 'daily' | 'weekly', target: number) => {
+      const now = new Date().toISOString()
+      const todayStr = now.slice(0, 10)
+      commit((prev) => {
+        const isSameWeek = (dateStr1: string, dateStr2: string) => {
+          const d1 = new Date(dateStr1)
+          const d2 = new Date(dateStr2)
+          const getMonday = (d: Date) => {
+            const date = new Date(d)
+            const day = date.getDay()
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1)
+            return new Date(date.setDate(diff)).toISOString().slice(0, 10)
+          }
+          return getMonday(d1) === getMonday(d2)
+        }
+
+        const existingIndex = prev.goals.findIndex((g) => {
+          if (g.type !== type) return false
+          if (type === 'daily') {
+            return g.createdAt.slice(0, 10) === todayStr
+          } else {
+            return isSameWeek(g.createdAt, now)
+          }
+        })
+
+        const updatedGoals = [...prev.goals]
+        if (existingIndex > -1) {
+          updatedGoals[existingIndex] = {
+            ...updatedGoals[existingIndex],
+            target,
+          }
+        } else {
+          updatedGoals.push({
+            id: uuid(),
+            type,
+            target,
+            createdAt: now,
+          })
+        }
+
+        return {
+          ...prev,
+          goals: updatedGoals,
+        }
+      })
+    },
+    [commit],
+  )
+
   const overdueTasks = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
     return state.tasks.filter(
@@ -220,6 +299,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getMember,
       tasksByStatus,
       overdueTasks,
+      setGoal,
       stats,
     }),
     [
@@ -235,6 +315,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getMember,
       tasksByStatus,
       overdueTasks,
+      setGoal,
       stats,
     ],
   )

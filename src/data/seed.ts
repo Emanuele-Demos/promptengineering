@@ -102,7 +102,20 @@ export const seedData: AppState = {
       dueDate: '2026-07-10',
       tags: ['devops'],
       createdAt: '2026-07-04T12:00:00Z',
-      updatedAt: '2026-07-05T09:00:00Z',
+    },
+  ],
+  goals: [
+    {
+      id: 'g1',
+      type: 'daily',
+      target: 3,
+      createdAt: '2026-07-08T09:00:00Z',
+    },
+    {
+      id: 'g2',
+      type: 'weekly',
+      target: 8,
+      createdAt: '2026-07-01T09:00:00Z',
     },
   ],
 }

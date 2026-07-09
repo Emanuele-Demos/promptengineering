@@ -4,6 +4,7 @@ import { Layout } from './components/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { Board } from './pages/Board'
 import { Team } from './pages/Team'
+import { Goals } from './pages/Goals'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="board" element={<Board />} />
             <Route path="team" element={<Team />} />
+            <Route path="goals" element={<Goals />} />
           </Route>
         </Routes>
       </BrowserRouter>

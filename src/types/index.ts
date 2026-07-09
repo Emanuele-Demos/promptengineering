@@ -16,6 +16,19 @@ export interface Attachment {
   type: string
   size: number
 }
+
+export interface Folder {
+  id: string
+  name: string
+  color: string
+}
+
+export interface Folder {
+  id: string
+  name: string
+  color: string
+}
+
 export interface Task {
   id: string
   title: string
@@ -26,6 +39,7 @@ export interface Task {
   status: TaskStatus
   priority: TaskPriority
   assigneeId: string | null
+  folderId?: string | null
   dueDate: string | null
   tags: string[]
   createdAt: string
@@ -34,6 +48,7 @@ export interface Task {
 
 export interface AppState {
   members: TeamMember[]
+  folders: Folder[]
   tasks: Task[]
 }
 

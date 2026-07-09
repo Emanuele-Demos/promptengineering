@@ -1,6 +1,11 @@
 import type { AppState } from '../types'
 
 export const seedData: AppState = {
+  folders: [
+    { id: 'f1', name: 'Sviluppo Frontend', color: '#6366f1' },
+    { id: 'f2', name: 'Sviluppo Backend', color: '#8b5cf6' },
+    { id: 'f3', name: 'Pianificazione', color: '#14b8a6' },
+  ],
   members: [
     {
       id: 'm1',

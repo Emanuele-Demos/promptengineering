@@ -20,6 +20,18 @@ export interface Task {
   tags: string[]
   createdAt: string
   updatedAt: string
+  reminderDate?: string | null
+  reminderSent?: boolean
+}
+
+export interface Notification {
+  id: string
+  taskId: string
+  taskTitle: string
+  message: string
+  type?: 'reminder' | 'urgent' | 'completion'
+  createdAt: string
+  read: boolean
 }
 
 export interface AppState {

@@ -39,6 +39,17 @@ export function getInitials(name: string): string {
 
 export function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
+  if (dateStr.includes('T')) {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return '—'
+    return d.toLocaleDateString('it-IT', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('it-IT', {
     day: 'numeric',
     month: 'short',
@@ -48,13 +59,14 @@ export function formatDate(dateStr: string | null): string {
 
 export function isOverdue(dueDate: string | null, status: TaskStatus): boolean {
   if (!dueDate || status === 'done') return false
-  return dueDate < new Date().toISOString().slice(0, 10)
+  const due = new Date(dueDate.includes('T') ? dueDate : dueDate + 'T23:59:59')
+  return due.getTime() < new Date().getTime()
 }
 
 export function daysUntilDue(dueDate: string | null): number | null {
   if (!dueDate) return null
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const due = new Date(dueDate + 'T00:00:00')
+  const due = new Date(dueDate.includes('T') ? dueDate : dueDate + 'T00:00:00')
   return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }

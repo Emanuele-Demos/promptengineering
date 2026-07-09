@@ -1,8 +1,12 @@
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { MobileHeader, MobileNav } from './MobileNav'
+import { TaskModal } from './TaskModal'
+import { useApp } from '../store/AppContext'
 
 export function Layout() {
+  const { selectedTask, isModalOpen, closeModal, defaultStatus } = useApp()
+
   return (
     <div className="flex min-h-screen min-h-[100dvh]">
       <Sidebar />
@@ -13,6 +17,13 @@ export function Layout() {
         </main>
         <MobileNav />
       </div>
+
+      <TaskModal
+        task={selectedTask}
+        defaultStatus={defaultStatus}
+        open={isModalOpen}
+        onClose={closeModal}
+      />
     </div>
   )
 }

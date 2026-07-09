@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Kanban, Users, Zap } from 'lucide-react'
+import { NotificationBell } from './NotificationCenter'
 
 const links = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
@@ -18,14 +19,17 @@ export function MobileHeader() {
   const title = pageTitles[pathname] ?? 'TeamFlow'
 
   return (
-    <header className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 px-4 py-3 flex items-center gap-3 safe-top">
-      <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
-        <Zap className="w-4 h-4 text-white" />
+    <header className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 px-4 py-3 flex items-center justify-between safe-top">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+          <Zap className="w-4 h-4 text-white" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs text-slate-500 leading-none">TeamFlow</p>
+          <h1 className="text-base font-bold text-slate-900 truncate">{title}</h1>
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="text-xs text-slate-500 leading-none">TeamFlow</p>
-        <h1 className="text-base font-bold text-slate-900 truncate">{title}</h1>
-      </div>
+      <NotificationBell align="right" />
     </header>
   )
 }

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "c88d0b8f-6d58-4086-a8fb-8f88c5bec137",
+    "taskId": "99d00f3a-ec95-4993-9b4a-78744726959b",
+    "taskTitle": "Fare la spesa",
+    "message": "Scade tra 1 ora!",
+    "createdAt": "2026-07-09T10:15:30.002Z",
+    "read": false
+  },
+  {
+    "id": "985cf345-12b6-4d5d-a02e-079c9f08b91a",
+    "taskId": "t2",
+    "taskTitle": "Implementare autenticazione",
+    "message": "Scade tra 1 ora!",
+    "createdAt": "2026-07-09T10:15:00.004Z",
+    "read": false
+  },
+  {
+    "id": "9d4aead2-d209-49a6-a7d2-3ea89b39ad7e",
+    "taskId": "99d00f3a-ec95-4993-9b4a-78744726959b",
+    "taskTitle": "Fare la spesa",
+    "message": "Scade tra 30 minuti!",
+    "createdAt": "2026-07-09T10:15:00.004Z",
+    "read": false
+  },
+  {
+    "id": "0e5b7205-1926-4779-8e84-ac311109f0f0",
+    "taskId": "t2",
+    "taskTitle": "Implementare autenticazione",
+    "message": "Scade tra 1 ora!",
+    "createdAt": "2026-07-09T10:11:20.006Z",
+    "read": false
+  }
+]

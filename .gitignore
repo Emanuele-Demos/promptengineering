@@ -24,3 +24,9 @@ dist-ssr
 *.sw?
 
 node_modules
+
+# SQLite database files
+backend/database/*.sqlite
+backend/database/*.db
+backend/uploads/
+*.db

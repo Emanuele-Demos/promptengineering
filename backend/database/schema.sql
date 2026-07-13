@@ -1,17 +1,52 @@
-CREATE TABLE IF NOT EXISTS users (
+PRAGMA foreign_keys = ON;
 
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-    first_name TEXT NOT NULL,
-
-    last_name TEXT NOT NULL,
-
+CREATE TABLE IF NOT EXISTS members (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
+    role TEXT NOT NULL,
+    color TEXT NOT NULL
+);
 
-    password TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS tasks (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL,
+    priority TEXT NOT NULL,
+    assigneeId TEXT,
+    dueDate TEXT,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL,
+    FOREIGN KEY (assigneeId) REFERENCES members(id) ON DELETE SET NULL
+);
 
-    role TEXT DEFAULT 'user',
+CREATE TABLE IF NOT EXISTS attachments (
+    id TEXT PRIMARY KEY,
+    taskId TEXT NOT NULL,
+    fileName TEXT NOT NULL,
+    path TEXT NOT NULL,
+    type TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    FOREIGN KEY (taskId) REFERENCES tasks(id) ON DELETE CASCADE
+);
 
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS task_tags (
+    taskId TEXT NOT NULL,
+    tag TEXT NOT NULL,
+    PRIMARY KEY (taskId, tag),
+    FOREIGN KEY (taskId) REFERENCES tasks(id) ON DELETE CASCADE
+);
 
+CREATE TABLE IF NOT EXISTS task_links (
+    taskId TEXT NOT NULL,
+    link TEXT NOT NULL,
+    PRIMARY KEY (taskId, link),
+    FOREIGN KEY (taskId) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS stato (
+    slug TEXT PRIMARY KEY,
+    valore_stato TEXT NOT NULL UNIQUE
 );

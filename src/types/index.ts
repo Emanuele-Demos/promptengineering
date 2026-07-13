@@ -16,17 +16,23 @@ export interface Task {
   status: TaskStatus
   priority: TaskPriority
   assigneeId: string | null
+  projectId: string | null
   dueDate: string | null
   tags: string[]
   createdAt: string
   updatedAt: string
 }
-
+export interface Project {
+  id: string
+  name: string
+  description: string
+  owner: string | null
+}
 export interface AppState {
   members: TeamMember[]
   tasks: Task[]
+  projects: Project[]
 }
-
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: 'Da fare',
   in_progress: 'In corso',

@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid'
 import { seedData } from '../data/seed'
 import type {
   AppState,
+  Project,
   Task,
   TaskPriority,
   TaskStatus,
@@ -55,6 +56,10 @@ interface AppContextValue extends AppState {
     inReview: number
     todo: number
   }
+  getProject: (id: string | null) => Project | undefined
+  addProject: (project: Omit<Project, 'id'>) => void
+  updateProject: (id: string, updates: Partial<Project>) => void
+  deleteProject: (id: string) => void
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -157,6 +162,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [commit],
   )
 
+  const addProject = useCallback(
+    (project: Omit<Project, 'id'>) => {
+      commit((prev) => ({
+        ...prev,
+        projects: [
+          ...prev.projects,
+          {
+            ...project,
+            id: uuid(),
+          },
+        ],
+      }))
+    },
+    [commit],
+  )
+
+  const updateProject = useCallback(
+    (id: string, updates: Partial<Project>) => {
+      commit((prev) => ({
+        ...prev,
+        projects: prev.projects.map((p) =>
+          p.id === id ? { ...p, ...updates } : p,
+        ),
+      }))
+    },
+    [commit],
+  )
+
+  const deleteProject = useCallback(
+    (id: string) => {
+      commit((prev) => ({
+        ...prev,
+        projects: prev.projects.filter((p) => p.id !== id),
+        tasks: prev.tasks.map((t) =>
+          t.projectId === id ? { ...t, projectId: null } : t,
+        ),
+      }))
+    },
+    [commit],
+  )
+
   const resetData = useCallback(() => {
     persist(seedData)
     setState(seedData)
@@ -166,6 +212,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (id: string | null) =>
       id ? state.members.find((m) => m.id === id) : undefined,
     [state.members],
+  )
+
+  const getProject = useCallback(
+    (id: string | null) =>
+      id ? state.projects.find((p) => p.id === id) : undefined,
+    [state.projects],
   )
 
   const tasksByStatus = useCallback(
@@ -216,8 +268,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addMember,
       updateMember,
       deleteMember,
+      addProject,
+      updateProject,
+      deleteProject,
       resetData,
       getMember,
+      getProject,
       tasksByStatus,
       overdueTasks,
       stats,
@@ -231,8 +287,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addMember,
       updateMember,
       deleteMember,
+      addProject,
+      updateProject,
+      deleteProject,
       resetData,
       getMember,
+      getProject,
       tasksByStatus,
       overdueTasks,
       stats,
@@ -242,6 +302,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
+// eslint-disable-next-line react/only-export-components
 export function useApp() {
   const ctx = useContext(AppContext)
   if (!ctx) throw new Error('useApp must be used within AppProvider')

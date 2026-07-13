@@ -10,6 +10,7 @@ import { useApp } from '../store/AppContext'
 interface TaskModalProps {
   task?: Task | null
   defaultStatus?: TaskStatus
+  defaultProjectId?: string
   open: boolean
   onClose: () => void
 }
@@ -20,6 +21,7 @@ const emptyForm = {
   status: 'todo' as TaskStatus,
   priority: 'medium' as TaskPriority,
   assigneeId: '' as string,
+  projectId: '' as string,
   dueDate: '',
   tags: '',
 }
@@ -27,10 +29,11 @@ const emptyForm = {
 export function TaskModal({
   task,
   defaultStatus = 'todo',
+  defaultProjectId = '',
   open,
   onClose,
 }: TaskModalProps) {
-  const { members, addTask, updateTask, deleteTask } = useApp()
+  const { members, projects, addTask, updateTask, deleteTask } = useApp()
   const isEditing = !!task
 
   const [form, setForm] = useState(emptyForm)
@@ -43,13 +46,14 @@ export function TaskModal({
         status: task.status,
         priority: task.priority,
         assigneeId: task.assigneeId ?? '',
+        projectId: task.projectId ?? '',
         dueDate: task.dueDate ?? '',
         tags: task.tags.join(', '),
       })
     } else {
-      setForm({ ...emptyForm, status: defaultStatus })
+      setForm({ ...emptyForm, status: defaultStatus, projectId: defaultProjectId })
     }
-  }, [task, defaultStatus, open])
+  }, [task, defaultStatus, defaultProjectId, open])
 
   if (!open) return null
 
@@ -63,6 +67,7 @@ export function TaskModal({
       status: form.status,
       priority: form.priority,
       assigneeId: form.assigneeId || null,
+      projectId: form.projectId || null,
       dueDate: form.dueDate || null,
       tags: form.tags
         .split(',')
@@ -196,6 +201,28 @@ export function TaskModal({
                 ))}
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Progetto
+              </label>
+              <select
+                value={form.projectId}
+                onChange={(e) =>
+                  setForm({ ...form, projectId: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Nessun progetto</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Scadenza

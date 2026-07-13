@@ -4,8 +4,12 @@ import {
   Kanban,
   Users,
   Zap,
+  Folder,
+  Plus,
 } from 'lucide-react'
+import { useState } from 'react'
 import { useApp } from '../store/AppContext'
+import { ProjectModal } from './ProjectModal'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,7 +18,8 @@ const links = [
 ]
 
 export function Sidebar() {
-  const { stats } = useApp()
+  const { stats, projects } = useApp()
+  const [projectModalOpen, setProjectModalOpen] = useState(false)
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 bg-white border-r border-slate-200 flex-col">
@@ -52,6 +57,39 @@ export function Sidebar() {
         ))}
       </nav>
 
+      <div className="px-3 py-2 border-t border-slate-200">
+        <div className="flex items-center justify-between px-3 mb-2">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            📁 Progetti
+          </p>
+          <button
+            onClick={() => setProjectModalOpen(true)}
+            className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+            title="Nuovo Progetto"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="space-y-1">
+          {projects.map((p) => (
+            <NavLink
+              key={p.id}
+              to={`/project/${p.id}`}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-indigo-50 text-indigo-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`
+              }
+            >
+              <Folder className="w-4 h-4 shrink-0" />
+              <span className="truncate">{p.name}</span>
+            </NavLink>
+          ))}
+        </div>
+      </div>
+
       <div className="p-4 border-t border-slate-200">
         <div className="bg-slate-50 rounded-xl p-3 space-y-2">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
@@ -69,6 +107,10 @@ export function Sidebar() {
           </div>
         </div>
       </div>
+      <ProjectModal
+        open={projectModalOpen}
+        onClose={() => setProjectModalOpen(false)}
+      />
     </aside>
   )
 }

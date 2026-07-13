@@ -68,9 +68,8 @@ export function TaskCard({
             <div className="flex items-center gap-2 shrink-0">
               {task.dueDate && (
                 <span
-                  className={`flex items-center gap-1 text-[11px] ${
-                    overdue ? 'text-red-600 font-medium' : 'text-slate-500'
-                  }`}
+                  className={`flex items-center gap-1 text-[11px] ${overdue ? 'text-red-600 font-medium' : 'text-slate-500'
+                    }`}
                 >
                   <Calendar className="w-3 h-3" />
                   {formatDate(task.dueDate)}

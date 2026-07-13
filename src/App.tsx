@@ -1,29 +1,22 @@
-import { useState } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "./store/AppContext";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { Board } from "./pages/Board";
 import { Team } from "./pages/Team";
 
-function App() {
-  const [currentView, setCurrentView] = useState('dashboard');
-
+export default function App() {
   return (
     <BrowserRouter>
       <AppProvider>
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
-          <Layout currentView={currentView} onViewChange={setCurrentView} />
-          
-          <main style={{ flex: 1, padding: '20px', backgroundColor: '#f8fafc' }}>
-            {currentView === 'dashboard' && <Dashboard />}
-            {currentView === 'board' && <Board />}
-            {currentView === 'team' && <Team />}
-          </main>
-        </div>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="board" element={<Board />} />
+            <Route path="team" element={<Team />} />
+          </Route>
+        </Routes>
       </AppProvider>
     </BrowserRouter>
   );
 }
-
-export default App;

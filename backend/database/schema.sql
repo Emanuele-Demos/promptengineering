@@ -16,6 +16,16 @@ CREATE TABLE IF NOT EXISTS categories (
     updatedAt TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    ownerId TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL,
+    FOREIGN KEY (ownerId) REFERENCES members(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -25,6 +35,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     priority TEXT NOT NULL,
     assigneeId TEXT,
     categoryId TEXT,
+    projectId TEXT,
     dueDate TEXT,
     reminderDate TEXT,
     reminderType TEXT,
@@ -47,7 +58,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     createdAt TEXT NOT NULL,
     updatedAt TEXT NOT NULL,
     FOREIGN KEY (assigneeId) REFERENCES members(id) ON DELETE SET NULL,
-    FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL
+    FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL,
+    FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS attachments (

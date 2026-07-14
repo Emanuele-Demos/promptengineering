@@ -4,10 +4,11 @@ import { getDatabase } from '../config/database'
 import { getAttachmentsByTaskId } from './attachmentService'
 import { getNotesByTaskId } from './noteService'
 import { categoryExists, getCategoryById } from './categoryService'
+import { projectExists } from './projectService'
 import type { ReminderType } from '../utils/reminderValidation'
 import { parseRepeatDays, serializeRepeatDays } from '../utils/recurrenceValidation'
 
-const TASK_SELECT = `id, title, description, notes, status, priority, assigneeId, categoryId,
+const TASK_SELECT = `id, title, description, notes, status, priority, assigneeId, categoryId, projectId,
   dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
   isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
   repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
@@ -152,17 +153,20 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
   if (task.categoryId && !(await categoryExists(task.categoryId, connection))) {
     throw new Error('Categoria non valida')
   }
+  if (task.projectId && !(await projectExists(task.projectId, connection))) {
+    throw new Error('Progetto non valido')
+  }
 
   await connection.run('BEGIN')
   try {
     await connection.run(
       `INSERT INTO tasks (
-        id, title, description, notes, status, priority, assigneeId, categoryId,
+        id, title, description, notes, status, priority, assigneeId, categoryId, projectId,
         dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
         isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
         repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
         repeatDays, maxOccurrences, currentOccurrences, isRecurringActive
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         task.id,
         task.title,
@@ -172,6 +176,7 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         task.priority,
         task.assigneeId,
         task.categoryId,
+        task.projectId,
         task.dueDate,
         task.reminderDate,
         task.reminderType,
@@ -195,6 +200,7 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         priority: task.priority,
         assigneeId: task.assigneeId,
         categoryId: task.categoryId,
+        projectId: task.projectId ?? null,
         dueDate: task.dueDate,
         reminderDate: task.reminderDate,
         reminderType: task.reminderType,
@@ -236,6 +242,9 @@ export async function updateTask(
   if (task.categoryId && !(await categoryExists(task.categoryId, connection))) {
     throw new Error('Categoria non valida')
   }
+  if (task.projectId && !(await projectExists(task.projectId, connection))) {
+    throw new Error('Progetto non valido')
+  }
 
   await connection.run('BEGIN')
   try {
@@ -250,7 +259,7 @@ export async function updateTask(
     await connection.run(
       `UPDATE tasks SET
         title = ?, description = ?, notes = ?, status = ?, priority = ?,
-        assigneeId = ?, categoryId = ?, dueDate = ?,
+        assigneeId = ?, categoryId = ?, projectId = ?, dueDate = ?,
         reminderDate = ?, reminderType = ?,
         reminderSentAt = ?, updatedAt = ?,
         isRecurring = ?, repeatType = ?, repeatEvery = ?, repeatCustomUnit = ?,
@@ -266,6 +275,7 @@ export async function updateTask(
         task.priority,
         task.assigneeId,
         task.categoryId,
+        task.projectId,
         task.dueDate,
         task.reminderDate,
         task.reminderType,

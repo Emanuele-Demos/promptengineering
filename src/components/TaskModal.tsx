@@ -6,6 +6,7 @@ import { useApp } from '../store/AppContext'
 import { upsertTask } from '../api/tasks.js'
 import { setCurrentUserId } from '../api/notifications.js'
 import { useCategories } from '../hooks/useCategories'
+import { useProjects } from '../hooks/useProjects'
 import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
@@ -36,6 +37,7 @@ const emptyForm = {
   dueDate: '',
   tags: '',
   categoryId: '',
+  projectId: '',
   reminderType: 'none' as ReminderType,
   customReminderAt: '',
   isRecurring: false,
@@ -64,6 +66,7 @@ export function TaskModal({
 }: TaskModalProps) {
   const { members, addTask, updateTask, deleteTask } = useApp()
   const { categories, loading: categoriesLoading } = useCategories()
+  const { projects, loading: projectsLoading } = useProjects()
   const isEditing = !!task
 
   const [form, setForm] = useState(emptyForm)
@@ -85,6 +88,7 @@ export function TaskModal({
         dueDate: task.dueDate ?? '',
         tags: task.tags.join(', '),
         categoryId: task.categoryId ?? '',
+        projectId: task.projectId ?? '',
         reminderType: (task.reminderType ?? 'none') as ReminderType,
         customReminderAt:
           task.reminderType === 'custom' ? toDatetimeLocalValue(task.reminderDate) : '',
@@ -130,6 +134,7 @@ export function TaskModal({
       priority: form.priority,
       assigneeId: form.assigneeId || null,
       categoryId: form.categoryId || null,
+      projectId: form.projectId || null,
       dueDate: form.dueDate || null,
       reminderType: reminderType === 'none' ? null : reminderType,
       reminderDate,
@@ -211,6 +216,7 @@ export function TaskModal({
         priority: payload.priority,
         assigneeId: payload.assigneeId,
         categoryId: payload.categoryId,
+        projectId: payload.projectId,
         dueDate: payload.dueDate,
         reminderType: payload.reminderType,
         reminderDate: payload.reminderDate,
@@ -247,6 +253,7 @@ export function TaskModal({
         priority: form.priority,
         assigneeId: form.assigneeId || null,
         categoryId: form.categoryId || null,
+        projectId: form.projectId || null,
         dueDate: form.dueDate || null,
         reminderType: form.reminderType === 'none' ? null : form.reminderType,
         reminderDate:
@@ -644,6 +651,24 @@ export function TaskModal({
                 />
               )}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Progetto</label>
+            <select
+              value={form.projectId}
+              onChange={(e) => setForm({ ...form, projectId: e.target.value })}
+              disabled={projectsLoading}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Nessun progetto</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                  {project.description ? ` — ${project.description.slice(0, 40)}` : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

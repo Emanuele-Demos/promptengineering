@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Kanban, Users, Zap, ListChecks, FolderOpen, Target } from 'lucide-react'
+import { LayoutDashboard, Kanban, Users, Zap, ListChecks, FolderOpen, Target, FolderKanban } from 'lucide-react'
 import { NotificationBell } from './NotificationBell'
 
 const links = [
@@ -8,6 +8,7 @@ const links = [
   { to: '/team', label: 'Team', icon: Users },
   { to: '/gestione_stato', label: 'Stati', icon: ListChecks },
   { to: '/gestione_categorie', label: 'Categorie', icon: FolderOpen },
+  { to: '/progetti', label: 'Progetti', icon: FolderKanban },
   { to: '/obiettivi', label: 'Obiettivi', icon: Target },
 ]
 
@@ -17,6 +18,7 @@ const pageTitles: Record<string, string> = {
   '/team': 'Team',
   '/gestione_stato': 'Gestione Stato',
   '/gestione_categorie': 'Gestione Categorie',
+  '/progetti': 'Progetti',
   '/notifiche': 'Centro Notifiche',
   '/obiettivi': 'Obiettivi',
 }

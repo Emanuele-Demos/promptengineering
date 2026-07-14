@@ -86,6 +86,28 @@ export async function runMigrations(db: Database): Promise<void> {
     await db.exec(`ALTER TABLE tasks ADD COLUMN categoryId TEXT REFERENCES categories(id) ON DELETE SET NULL`)
   }
 
+  const projectsTable = (await db.all(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name='projects'`
+  )) as { name: string }[]
+
+  if (projectsTable.length === 0) {
+    await db.exec(`
+      CREATE TABLE projects (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        ownerId TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        FOREIGN KEY (ownerId) REFERENCES members(id) ON DELETE CASCADE
+      )
+    `)
+  }
+
+  if (!(await columnExists(db, 'tasks', 'projectId'))) {
+    await db.exec(`ALTER TABLE tasks ADD COLUMN projectId TEXT REFERENCES projects(id) ON DELETE SET NULL`)
+  }
+
   if (!(await columnExists(db, 'tasks', 'reminderDate'))) {
     await db.exec(`ALTER TABLE tasks ADD COLUMN reminderDate TEXT`)
   }

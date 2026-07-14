@@ -7,8 +7,10 @@ import {
   ListChecks,
   FolderOpen,
   Target,
+  FolderKanban,
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
+import { useProjects } from '../hooks/useProjects'
 import { NotificationBell } from './NotificationBell'
 
 const links = [
@@ -17,11 +19,13 @@ const links = [
   { to: '/team', label: 'Team', icon: Users },
   { to: '/gestione_stato', label: 'Gestione Stato', icon: ListChecks },
   { to: '/gestione_categorie', label: 'Categorie', icon: FolderOpen },
+  { to: '/progetti', label: 'Progetti', icon: FolderKanban },
   { to: '/obiettivi', label: 'Obiettivi', icon: Target },
 ]
 
 export function Sidebar() {
   const { stats } = useApp()
+  const { projects, loading: projectsLoading } = useProjects()
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 bg-white border-r border-slate-200 flex-col">
@@ -42,12 +46,12 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/' || to === '/progetti'}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
@@ -60,6 +64,32 @@ export function Sidebar() {
             {label}
           </NavLink>
         ))}
+
+        {!projectsLoading && projects.length > 0 && (
+          <div className="pt-3 mt-2 border-t border-slate-100">
+            <p className="px-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              I tuoi progetti
+            </p>
+            {projects.slice(0, 8).map((project) => (
+              <NavLink
+                key={project.id}
+                to={`/progetti/${project.id}`}
+                className={({ isActive }) =>
+                  `block px-3 py-2 rounded-lg text-xs transition-colors ${
+                    isActive
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`
+                }
+              >
+                <span className="font-medium truncate block">{project.name}</span>
+                <span className="text-[10px] text-slate-400">
+                  {project.completedTasks}/{project.totalTasks} · {project.progress}%
+                </span>
+              </NavLink>
+            ))}
+          </div>
+        )}
       </nav>
 
       <div className="p-4 border-t border-slate-200">

@@ -144,6 +144,10 @@ function buildTaskPayload(
       body.categoryId !== undefined
         ? ((body.categoryId as string | null) || null)
         : (existing?.categoryId ?? null),
+    projectId:
+      body.projectId !== undefined
+        ? ((body.projectId as string | null) || null)
+        : (existing?.projectId ?? null),
     dueDate,
     reminderDate,
     reminderType: reminderType === 'none' ? null : reminderType,

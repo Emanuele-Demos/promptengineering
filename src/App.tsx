@@ -8,6 +8,8 @@ import { GestioneStato } from "./pages/GestioneStato";
 import { GestioneCategorie } from "./pages/GestioneCategorie";
 import { CentroNotifiche } from "./pages/CentroNotifiche";
 import { GestioneObiettivi } from "./pages/GestioneObiettivi";
+import { GestioneProgetti } from "./pages/GestioneProgetti";
+import { DettaglioProgetto } from "./pages/DettaglioProgetto";
 
 export default function App() {
   return (
@@ -20,6 +22,8 @@ export default function App() {
             <Route path="team" element={<Team />} />
             <Route path="gestione_stato" element={<GestioneStato />} />
             <Route path="gestione_categorie" element={<GestioneCategorie />} />
+            <Route path="progetti" element={<GestioneProgetti />} />
+            <Route path="progetti/:id" element={<DettaglioProgetto />} />
             <Route path="notifiche" element={<CentroNotifiche />} />
             <Route path="obiettivi" element={<GestioneObiettivi />} />
           </Route>

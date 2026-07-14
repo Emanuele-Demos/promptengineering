@@ -86,6 +86,32 @@ export interface Category {
   taskCount?: number
 }
 
+export interface ProjectTaskSummary {
+  id: string
+  title: string
+  status: TaskStatus
+  priority: TaskPriority
+  categoryId: string | null
+  categoryName?: string | null
+  dueDate: string | null
+  isCompleted: boolean
+}
+
+export interface Project {
+  id: string
+  name: string
+  description: string
+  ownerId: string
+  owner?: TeamMember
+  createdAt: string
+  updatedAt: string
+  totalTasks: number
+  completedTasks: number
+  progress: number
+  isCompleted: boolean
+  tasks?: ProjectTaskSummary[]
+}
+
 export interface Attachment {
   id: string
   taskId?: string
@@ -110,6 +136,7 @@ export interface Task {
   priority: TaskPriority
   assigneeId: string | null
   categoryId: string | null
+  projectId?: string | null
   category?: Category | null
   dueDate: string | null
   reminderDate: string | null
@@ -148,6 +175,7 @@ interface TaskRow {
   priority: TaskPriority
   assigneeId: string | null
   categoryId: string | null
+  projectId: string | null
   dueDate: string | null
   reminderDate: string | null
   reminderType: string | null

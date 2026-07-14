@@ -84,6 +84,16 @@ export function errorHandler(
     return
   }
 
+  if (
+    err.message.includes('Il nome del progetto') ||
+    err.message.includes('Proprietario non valido') ||
+    err.message.includes('Progetto non trovato') ||
+    err.message.includes('Progetto non valido')
+  ) {
+    res.status(400).json({ message: err.message })
+    return
+  }
+
   if (err.message.includes('FOREIGN KEY constraint failed')) {
     res.status(400).json({ message: 'Riferimento non valido' })
     return

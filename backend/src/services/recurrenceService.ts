@@ -13,7 +13,7 @@ import {
 import { resolveReminderFields } from '../utils/reminderValidation'
 import { getAttachmentsByTaskId, addAttachment } from './attachmentService'
 
-const RECURRING_SELECT = `id, title, description, notes, status, priority, assigneeId, categoryId,
+const RECURRING_SELECT = `id, title, description, notes, status, priority, assigneeId, categoryId, projectId,
   dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
   isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
   repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
@@ -118,12 +118,12 @@ async function generateNextInstance(source: TaskRow, db: Database): Promise<bool
 
     await db.run(
       `INSERT INTO tasks (
-        id, title, description, notes, status, priority, assigneeId, categoryId,
+        id, title, description, notes, status, priority, assigneeId, categoryId, projectId,
         dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
         isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
         repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
         repeatDays, maxOccurrences, currentOccurrences, isRecurringActive
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newId,
         source.title,
@@ -133,6 +133,7 @@ async function generateNextInstance(source: TaskRow, db: Database): Promise<bool
         source.priority,
         source.assigneeId,
         source.categoryId,
+        source.projectId,
         nextDueDate,
         reminderDate,
         source.reminderType,

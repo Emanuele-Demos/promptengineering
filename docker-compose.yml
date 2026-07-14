@@ -16,6 +16,7 @@ services:
       STORAGE_DISK: s3
       GRAPEMINDS_API_BASE_URL: https://api.grapeminds.it
       GRAPEMINDS_API_KEY: ''
+      GEOAPIFY_API_KEY: ${GEOAPIFY_API_KEY:-}
     ports:
       - "8080:80"
     depends_on:

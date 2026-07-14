@@ -6,6 +6,10 @@ import { Board } from './pages/Board'
 import { Team } from './pages/Team'
 import { CalendarPage } from './pages/CalendarPage'
 import { GestioneStato } from './pages/GestioneStato'
+import { CategoriesPage } from './pages/CategoriesPage'
+import { NotificationsPage } from './pages/NotificationsPage'
+import { GoalsPage } from './pages/GoalsPage'
+import { GoalHistoryPage } from './pages/GoalHistoryPage'
 
 function App() {
   return (
@@ -18,6 +22,10 @@ function App() {
             <Route path="team" element={<Team />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="gestione_stato" element={<GestioneStato />} />
+            <Route path="categories" element={<CategoriesPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="goals" element={<GoalsPage />} />
+            <Route path="goal-history" element={<GoalHistoryPage />} />
           </Route>
         </Routes>
       </AppProvider>

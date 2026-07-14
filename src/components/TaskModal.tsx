@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
-import type { Task, TaskPriority, TaskStatus } from '../types'
+import type { Attachment, Task, TaskPriority, TaskStatus } from '../types'
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
@@ -20,11 +20,14 @@ const emptyForm = {
   description: '',
   notes: '',
   links: '',
-  attachments: [],
+  attachments: [] as Attachment[],
   status: 'todo' as TaskStatus,
   priority: 'medium' as TaskPriority,
   assigneeId: '' as string,
+  categoryId: '' as string,
   dueDate: '',
+  reminderType: 'none' as Task['reminderType'],
+  reminderDate: '',
   tags: '',
 }
 
@@ -34,7 +37,7 @@ export function TaskModal({
   open,
   onClose,
 }: TaskModalProps) {
-  const { members, addTask, updateTask, deleteTask } = useApp()
+  const { members, categories, addTask, updateTask, deleteTask } = useApp()
   const isEditing = !!task
 
   const [form, setForm] = useState(emptyForm)
@@ -50,7 +53,10 @@ export function TaskModal({
         status: task.status,
         priority: task.priority,
         assigneeId: task.assigneeId ?? '',
+        categoryId: task.categoryId ?? '',
         dueDate: task.dueDate ?? '',
+        reminderType: task.reminderType ?? 'none',
+        reminderDate: task.reminderDate ?? '',
         tags: task.tags.join(', '),
       })
     } else {
@@ -59,6 +65,28 @@ export function TaskModal({
   }, [task, defaultStatus, open])
 
   if (!open) return null
+
+  const resolveReminderDate = () => {
+    if (form.reminderType === 'none' || !form.dueDate) {
+      return null
+    }
+
+    if (form.reminderType === 'custom') {
+      return form.reminderDate || null
+    }
+
+    const baseDate = new Date(`${form.dueDate}T09:00:00`)
+    const offsets: Record<NonNullable<Task['reminderType']>, number> = {
+      '5m': 5 * 60 * 1000,
+      '30m': 30 * 60 * 1000,
+      '1h': 60 * 60 * 1000,
+      '1d': 24 * 60 * 60 * 1000,
+      none: 0,
+      custom: 0,
+    }
+
+    return new Date(baseDate.getTime() - offsets[form.reminderType]).toISOString()
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,7 +104,11 @@ export function TaskModal({
       status: form.status,
       priority: form.priority,
       assigneeId: form.assigneeId || null,
+      categoryId: form.categoryId || null,
       dueDate: form.dueDate || null,
+      reminderDate: resolveReminderDate(),
+      reminderType: form.reminderType,
+      notificationSent: task?.notificationSent ?? false,
       tags: form.tags
         .split(',')
         .map((t) => t.trim())
@@ -240,6 +272,26 @@ export function TaskModal({
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
+                Categoria
+              </label>
+              <select
+                value={form.categoryId}
+                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Nessuna categoria</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Scadenza
               </label>
               <input
@@ -251,7 +303,38 @@ export function TaskModal({
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Promemoria
+              </label>
+              <select
+                value={form.reminderType}
+                onChange={(e) => setForm({ ...form, reminderType: e.target.value as Task['reminderType'] })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="none">Nessun promemoria</option>
+                <option value="5m">5 minuti prima</option>
+                <option value="30m">30 minuti prima</option>
+                <option value="1h">1 ora prima</option>
+                <option value="1d">1 giorno prima</option>
+                <option value="custom">Personalizzato</option>
+              </select>
+            </div>
           </div>
+
+          {form.reminderType === 'custom' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Data e ora del promemoria
+              </label>
+              <input
+                type="datetime-local"
+                value={form.reminderDate}
+                onChange={(e) => setForm({ ...form, reminderDate: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">

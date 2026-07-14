@@ -18,8 +18,9 @@ export function TaskCard({
   draggable = false,
   onDragStart,
 }: TaskCardProps) {
-  const { getMember } = useApp()
+  const { getMember, getCategory } = useApp()
   const assignee = getMember(task.assigneeId)
+  const category = getCategory(task.categoryId ?? null)
   const overdue = isOverdue(task.dueDate, task.status)
 
   return (
@@ -38,18 +39,33 @@ export function TaskCard({
             {task.title}
           </h4>
 
-          {task.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-2">
-              {task.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-medium"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-1 mb-2">
+            {category ? (
+              <span
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                style={{ backgroundColor: `${category.color}20`, color: category.color }}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: category.color }} />
+                {category.name}
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] font-medium">
+                Nessuna categoria
+              </span>
+            )}
+            {task.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {task.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-medium"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">

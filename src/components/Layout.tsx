@@ -1,6 +1,10 @@
+import { Bell } from 'lucide-react'
 import { Outlet, NavLink } from 'react-router-dom'
+import { useApp } from '../store/AppContext'
 
 export function Layout() {
+  const { unreadNotifications } = useApp()
+
   return (
     <div className="flex">
       
@@ -27,6 +31,29 @@ export function Layout() {
 
           <NavLink to="/gestione_stato" className="menu-item">
             Gestione Stato
+          </NavLink>
+
+          <NavLink to="/categories" className="menu-item">
+            Categorie
+          </NavLink>
+
+          <NavLink to="/notifications" className="menu-item flex items-center justify-between">
+            <span>Notifiche</span>
+            {unreadNotifications > 0 ? (
+              <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                {unreadNotifications}
+              </span>
+            ) : (
+              <Bell className="h-4 w-4" />
+            )}
+          </NavLink>
+
+          <NavLink to="/goals" className="menu-item">
+            Obiettivi
+          </NavLink>
+
+          <NavLink to="/goal-history" className="menu-item">
+            Storico obiettivi
           </NavLink>
         </nav>
       </aside>

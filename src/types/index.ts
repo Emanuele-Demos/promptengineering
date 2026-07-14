@@ -8,6 +8,7 @@ export interface TeamMember {
   role: string
   color: string
 }
+
 export interface Attachment {
   id: string
   taskid?: string
@@ -23,10 +24,11 @@ export interface Folder {
   color: string
 }
 
-export interface Folder {
+export interface Category {
   id: string
   name: string
   color: string
+  createdAt: string
 }
 
 export interface Task {
@@ -40,16 +42,80 @@ export interface Task {
   priority: TaskPriority
   assigneeId: string | null
   folderId?: string | null
+  categoryId?: string | null
   dueDate: string | null
   tags: string[]
+  reminderDate: string | null
+  reminderType: 'none' | '5m' | '30m' | '1h' | '1d' | 'custom'
+  notificationSent: boolean
+  completedAt?: string | null
   createdAt: string
   updatedAt: string
+}
+
+export interface Notification {
+  id: string
+  taskId: string
+  title: string
+  message: string
+  read: boolean
+  createdAt: string
+}
+
+export interface Goal {
+  id: string
+  userId: string
+  type: 'daily' | 'weekly'
+  target: number
+  createdAt: string
+}
+
+export interface GoalProgress {
+  id: string
+  goalId: string
+  type: 'daily' | 'weekly'
+  target: number
+  completed: number
+  percentage: number
+  achieved: boolean
+  createdAt: string
+}
+
+export interface GoalHistoryEntry {
+  id: string
+  goalId: string
+  userId: string
+  type: 'daily' | 'weekly'
+  target: number
+  completed: number
+  percentage: number
+  achieved: boolean
+  createdAt: string
+}
+
+export interface StatisticsSummary {
+  completedToday: number
+  completedWeek: number
+  completedMonth: number
+  overdueTasks: number
+  openTasks: number
+  averageCompletionTime: number
+  weeklyTrend: Array<{ day: string; completed: number }>
+  monthlyCompletions: Array<{ month: string; completed: number }>
+  tasksByCategory: Array<{ category: string; count: number }>
+  tasksByPriority: Array<{ priority: string; count: number }>
 }
 
 export interface AppState {
   members: TeamMember[]
   folders: Folder[]
+  categories: Category[]
   tasks: Task[]
+  notifications: Notification[]
+  goals: Goal[]
+  goalsProgress: GoalProgress[]
+  goalHistory: GoalHistoryEntry[]
+  statistics: StatisticsSummary | null
 }
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {

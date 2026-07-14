@@ -10,11 +10,16 @@ import {
 import { v4 as uuid } from 'uuid'
 import type {
   AppState,
+  Category,
+  Folder,
+  Goal,
+  GoalHistoryEntry,
+  GoalProgress,
+  Notification,
   Task,
   TaskPriority,
   TaskStatus,
   TeamMember,
-  Folder,
 } from '../types'
 import { MEMBER_COLORS } from '../types'
 
@@ -31,10 +36,39 @@ interface AppContextValue extends AppState {
   addFolder: (folder: Omit<Folder, 'id'>) => void
   updateFolder: (id: string, updates: Partial<Folder>) => void
   deleteFolder: (id: string) => void
+  addCategory: (category: Omit<Category, 'id' | 'createdAt'>) => void
+  updateCategory: (id: string, updates: Partial<Category>) => void
+  deleteCategory: (id: string) => void
   resetData: () => void
+  fetchNotifications: () => Promise<void>
+  markNotificationAsRead: (id: string) => void
+  markAllNotificationsAsRead: () => void
+  deleteNotification: (id: string) => void
+  loadGoals: () => Promise<void>
+  createGoal: (payload: { type: 'daily' | 'weekly'; target: number }) => Promise<void>
+  updateGoal: (id: string, target: number, type?: 'daily' | 'weekly') => Promise<void>
+  deleteGoal: (id: string) => Promise<void>
   getMember: (id: string | null) => TeamMember | undefined
+  getCategory: (id: string | null) => Category | undefined
   tasksByStatus: (status: TaskStatus) => Task[]
   overdueTasks: Task[]
+  notifications: Notification[]
+  goals: Goal[]
+  goalsProgress: GoalProgress[]
+  goalHistory: GoalHistoryEntry[]
+  statistics: {
+    completedToday: number
+    completedWeek: number
+    completedMonth: number
+    overdueTasks: number
+    openTasks: number
+    averageCompletionTime: number
+    weeklyTrend: Array<{ day: string; completed: number }>
+    monthlyCompletions: Array<{ month: string; completed: number }>
+    tasksByCategory: Array<{ category: string; count: number }>
+    tasksByPriority: Array<{ priority: string; count: number }>
+  } | null
+  unreadNotifications: number
   loading: boolean
   stats: {
     total: number
@@ -51,16 +85,67 @@ interface AppContextValue extends AppState {
 const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>({ tasks: [], members: [], folders: [] })
+  const [state, setState] = useState<AppState>({
+    tasks: [],
+    members: [],
+    folders: [],
+    categories: [],
+    notifications: [],
+    goals: [],
+    goalsProgress: [],
+    goalHistory: [],
+    statistics: null,
+  })
   const [loading, setLoading] = useState(true)
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/notifications`)
+      const data = await res.json()
+      setState((prev) => ({ ...prev, notifications: data }))
+    } catch (err) {
+      console.error('Errore nel caricamento delle notifiche:', err)
+    }
+  }, [])
+
+  const loadGoals = useCallback(async () => {
+    try {
+      const [resGoals, resProgress, resHistory] = await Promise.all([
+        fetch(`${API_BASE}/goals`).then((r) => r.json()),
+        fetch(`${API_BASE}/goals/current`).then((r) => r.json()),
+        fetch(`${API_BASE}/goals/history`).then((r) => r.json()),
+      ])
+
+      setState((prev) => ({
+        ...prev,
+        goals: resGoals,
+        goalsProgress: Array.isArray(resProgress) ? resProgress : [],
+        goalHistory: Array.isArray(resHistory) ? resHistory : [],
+      }))
+    } catch (err) {
+      console.error('Errore nel caricamento degli obiettivi:', err)
+    }
+  }, [])
+
+  const loadStatistics = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/statistics`)
+      const data = await res.json()
+      setState((prev) => ({ ...prev, statistics: data }))
+    } catch (err) {
+      console.error('Errore nel caricamento delle statistiche:', err)
+    }
+  }, [])
 
   useEffect(() => {
     async function load() {
       try {
-        const [resTasks, resMembers, resFolders] = await Promise.all([
+        const [resTasks, resMembers, resFolders, resCategories, resNotifications] = await Promise.all([
           fetch(`${API_BASE}/tasks`).then((r) => r.json()),
           fetch(`${API_BASE}/members`).then((r) => r.json()),
           fetch(`${API_BASE}/folders`).then((r) => r.json()),
+          fetch(`${API_BASE}/categories`).then((r) => r.json()),
+          fetch(`${API_BASE}/notifications`).then((r) => r.json()),
         ])
 
         const normalizedTasks = (resTasks as Task[]).map((task) => ({
@@ -70,26 +155,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
           attachments: task.attachments ?? [],
         }))
 
-        setState({ tasks: normalizedTasks, members: resMembers, folders: resFolders })
+        setState((prev) => ({
+          ...prev,
+          tasks: normalizedTasks,
+          members: resMembers,
+          folders: resFolders,
+          categories: resCategories,
+          notifications: resNotifications,
+        }))
       } catch (err) {
         console.error('Errore nel caricamento dei dati dal server:', err)
       } finally {
         setLoading(false)
       }
     }
+
     load()
-  }, [])
+    void loadGoals()
+    void loadStatistics()
+    const interval = window.setInterval(() => {
+      void fetchNotifications()
+      void loadGoals()
+      void loadStatistics()
+    }, 60000)
+
+    return () => window.clearInterval(interval)
+  }, [fetchNotifications, loadGoals, loadStatistics])
 
   const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString()
     const newTask: Task = {
-      notes: '',
-      links: [],
-      attachments: [],
-      ...task,
       id: uuid(),
       createdAt: now,
       updatedAt: now,
+      title: task.title,
+      description: task.description,
+      notes: task.notes ?? '',
+      links: task.links ?? [],
+      attachments: task.attachments ?? [],
+      status: task.status,
+      priority: task.priority,
+      assigneeId: task.assigneeId,
+      folderId: task.folderId,
+      categoryId: task.categoryId,
+      dueDate: task.dueDate,
+      tags: task.tags,
+      reminderDate: task.reminderDate ?? null,
+      reminderType: task.reminderType ?? 'none',
+      notificationSent: task.notificationSent ?? false,
     }
 
     setState((prev) => ({
@@ -101,8 +214,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newTask),
-    }).catch((err) => console.error('Errore durante la creazione del task:', err))
-  }, [])
+    })
+      .catch((err) => console.error('Errore durante la creazione del task:', err))
+      .finally(() => {
+        void loadStatistics()
+      })
+  }, [loadStatistics])
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
     const now = new Date().toISOString()
@@ -117,8 +234,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(taskUpdates),
-    }).catch((err) => console.error("Errore durante l'aggiornamento del task:", err))
-  }, [])
+    })
+      .catch((err) => console.error("Errore durante l'aggiornamento del task:", err))
+      .finally(() => {
+        void loadGoals()
+        void loadStatistics()
+      })
+  }, [loadGoals, loadStatistics])
 
   const deleteTask = useCallback((id: string) => {
     setState((prev) => ({
@@ -129,14 +251,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     fetch(`${API_BASE}/tasks/${id}`, {
       method: 'DELETE',
     }).catch((err) => console.error("Errore durante l'eliminazione del task:", err))
-  }, [])
+      .finally(() => {
+        void loadStatistics()
+      })
+  }, [loadStatistics])
 
-  const moveTask = useCallback(
-    (id: string, status: TaskStatus) => {
-      updateTask(id, { status })
-    },
-    [updateTask],
-  )
+  const moveTask = useCallback((id: string, status: TaskStatus) => {
+    updateTask(id, { status })
+  }, [updateTask])
 
   const addMember = useCallback((member: Omit<TeamMember, 'id' | 'color'>) => {
     const newId = uuid()
@@ -223,23 +345,158 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }).catch((err) => console.error("Errore durante l'eliminazione della cartella:", err))
   }, [])
 
+  const addCategory = useCallback((category: Omit<Category, 'id' | 'createdAt'>) => {
+    const newId = uuid()
+    const createdAt = new Date().toISOString()
+    const newCategory = { ...category, id: newId, createdAt }
+
+    setState((prev) => ({
+      ...prev,
+      categories: [...prev.categories, newCategory],
+    }))
+
+    fetch(`${API_BASE}/categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCategory),
+    })
+      .catch((err) => console.error('Errore durante la creazione della categoria:', err))
+      .finally(() => {
+        void loadStatistics()
+      })
+  }, [loadStatistics])
+
+  const updateCategory = useCallback((id: string, updates: Partial<Category>) => {
+    setState((prev) => ({
+      ...prev,
+      categories: prev.categories.map((category) => (category.id === id ? { ...category, ...updates } : category)),
+    }))
+
+    fetch(`${API_BASE}/categories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch((err) => console.error("Errore durante l'aggiornamento della categoria:", err))
+      .finally(() => {
+        void loadStatistics()
+      })
+  }, [loadStatistics])
+
+  const deleteCategory = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      categories: prev.categories.filter((category) => category.id !== id),
+      tasks: prev.tasks.map((task) => (task.categoryId === id ? { ...task, categoryId: null } : task)),
+    }))
+
+    fetch(`${API_BASE}/categories/${id}`, {
+      method: 'DELETE',
+    }).catch((err) => console.error("Errore durante l'eliminazione della categoria:", err))
+      .finally(() => {
+        void loadStatistics()
+      })
+  }, [loadStatistics])
+
   const resetData = useCallback(async () => {
     try {
       await fetch(`${API_BASE}/reset`, { method: 'POST' })
-      const [resTasks, resMembers, resFolders] = await Promise.all([
+      const [resTasks, resMembers, resFolders, resCategories, resNotifications] = await Promise.all([
         fetch(`${API_BASE}/tasks`).then((r) => r.json()),
         fetch(`${API_BASE}/members`).then((r) => r.json()),
         fetch(`${API_BASE}/folders`).then((r) => r.json()),
+        fetch(`${API_BASE}/categories`).then((r) => r.json()),
+        fetch(`${API_BASE}/notifications`).then((r) => r.json()),
       ])
-      setState({ tasks: resTasks, members: resMembers, folders: resFolders })
+      setState({
+        tasks: resTasks,
+        members: resMembers,
+        folders: resFolders,
+        categories: resCategories,
+        notifications: resNotifications,
+        goals: [],
+        goalsProgress: [],
+        goalHistory: [],
+        statistics: null,
+      })
+      void loadStatistics()
     } catch (err) {
       console.error('Errore durante il reset dei dati:', err)
     }
   }, [])
 
+  const markNotificationAsRead = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      notifications: prev.notifications.map((notification) => (notification.id === id ? { ...notification, read: true } : notification)),
+    }))
+
+    fetch(`${API_BASE}/notifications/${id}/read`, { method: 'PUT' }).catch((err) => console.error('Errore nel marcare la notifica come letta:', err))
+  }, [])
+
+  const markAllNotificationsAsRead = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      notifications: prev.notifications.map((notification) => ({ ...notification, read: true })),
+    }))
+
+    fetch(`${API_BASE}/notifications/read-all`, { method: 'PUT' }).catch((err) => console.error('Errore nel marcare tutte le notifiche come lette:', err))
+  }, [])
+
+  const deleteNotification = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      notifications: prev.notifications.filter((notification) => notification.id !== id),
+    }))
+
+    fetch(`${API_BASE}/notifications/${id}`, { method: 'DELETE' }).catch((err) => console.error('Errore nell\'eliminazione della notifica:', err))
+  }, [])
+
+  const createGoal = useCallback(async (payload: { type: 'daily' | 'weekly'; target: number }) => {
+    try {
+      const res = await fetch(`${API_BASE}/goals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error('Impossibile creare l\'obiettivo')
+      await loadGoals()
+    } catch (err) {
+      console.error('Errore nella creazione dell\'obiettivo:', err)
+    }
+  }, [loadGoals])
+
+  const updateGoal = useCallback(async (id: string, target: number, type: 'daily' | 'weekly' = 'daily') => {
+    try {
+      const res = await fetch(`${API_BASE}/goals/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target, type }),
+      })
+      if (!res.ok) throw new Error('Impossibile aggiornare l\'obiettivo')
+      await loadGoals()
+    } catch (err) {
+      console.error('Errore nell\'aggiornamento dell\'obiettivo:', err)
+    }
+  }, [loadGoals])
+
+  const deleteGoal = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/goals/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Impossibile eliminare l\'obiettivo')
+      await loadGoals()
+    } catch (err) {
+      console.error('Errore nell\'eliminazione dell\'obiettivo:', err)
+    }
+  }, [loadGoals])
+
   const getMember = useCallback(
     (id: string | null) => (id ? state.members.find((m) => m.id === id) : undefined),
     [state.members],
+  )
+
+  const getCategory = useCallback(
+    (id: string | null) => (id ? state.categories.find((category) => category.id === id) : undefined),
+    [state.categories],
   )
 
   const tasksByStatus = useCallback(
@@ -251,6 +508,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const today = new Date().toISOString().slice(0, 10)
     return state.tasks.filter((t) => t.dueDate && t.dueDate < today && t.status !== 'done')
   }, [state.tasks])
+
+  const unreadNotifications = useMemo(() => state.notifications.filter((notification) => !notification.read).length, [state.notifications])
 
   const stats = useMemo(
     () => ({
@@ -283,10 +542,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addFolder,
       updateFolder,
       deleteFolder,
+      addCategory,
+      updateCategory,
+      deleteCategory,
       resetData,
+      fetchNotifications,
+      markNotificationAsRead,
+      markAllNotificationsAsRead,
+      deleteNotification,
+      loadGoals,
+      createGoal,
+      updateGoal,
+      deleteGoal,
+      loadStatistics,
       getMember,
+      getCategory,
       tasksByStatus,
       overdueTasks,
+      notifications: state.notifications,
+      unreadNotifications,
       loading,
       stats,
     }),
@@ -302,10 +576,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addFolder,
       updateFolder,
       deleteFolder,
+      addCategory,
+      updateCategory,
+      deleteCategory,
       resetData,
+      fetchNotifications,
+      markNotificationAsRead,
+      markAllNotificationsAsRead,
+      deleteNotification,
+      loadGoals,
+      createGoal,
+      updateGoal,
+      deleteGoal,
+      loadStatistics,
       getMember,
+      getCategory,
       tasksByStatus,
       overdueTasks,
+      state.notifications,
+      unreadNotifications,
       loading,
       stats,
     ],

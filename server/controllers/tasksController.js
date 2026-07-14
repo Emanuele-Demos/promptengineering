@@ -12,14 +12,14 @@ export const getTasks = (req, res) => {
 };
 
 export const createTask = (req, res) => {
-  const { id, title, description, status, priority, assigneeId, folderId, dueDate, tags, createdAt, updatedAt } = req.body;
+  const { id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tags, createdAt, updatedAt, reminderDate, reminderType, notificationSent, completedAt } = req.body;
   const tagsStr = JSON.stringify(tags || []);
   db.run(
-    'INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, dueDate, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, title, description, status, priority, assigneeId, folderId, dueDate, tagsStr, createdAt, updatedAt],
+    'INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tags, reminderDate, reminderType, notificationSent, completedAt, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, title, description, status, priority, assigneeId, folderId, categoryId ?? null, dueDate, tagsStr, reminderDate ?? null, reminderType ?? 'none', notificationSent ? 1 : 0, completedAt ?? null, createdAt, updatedAt],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
-      res.status(201).json({ id, title, description, status, priority, assigneeId, folderId, dueDate, tags, createdAt, updatedAt });
+      res.status(201).json({ id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tags, reminderDate, reminderType, notificationSent, completedAt, createdAt, updatedAt });
     }
   );
 };
@@ -30,6 +30,14 @@ export const updateTask = (req, res) => {
   
   if (updates.tags) {
     updates.tags = JSON.stringify(updates.tags);
+  }
+
+  if (typeof updates.notificationSent === 'boolean') {
+    updates.notificationSent = updates.notificationSent ? 1 : 0;
+  }
+
+  if (updates.status === 'done' && !updates.completedAt) {
+    updates.completedAt = new Date().toISOString();
   }
 
   const fields = Object.keys(updates);

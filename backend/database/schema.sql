@@ -5,7 +5,10 @@ CREATE TABLE IF NOT EXISTS members (
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     role TEXT NOT NULL,
-    color TEXT NOT NULL
+    color TEXT NOT NULL,
+    password TEXT,
+    createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+    updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS categories (

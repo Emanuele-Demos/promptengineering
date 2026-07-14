@@ -13,14 +13,17 @@
     "@fullcalendar/core": "^6.1.21",
     "@fullcalendar/daygrid": "^6.1.21",
     "@fullcalendar/react": "^6.1.21",
+    "@hookform/resolvers": "^5.4.0",
     "lucide-react": "^1.23.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-hook-form": "^7.81.0",
     "react-router-dom": "^7.18.1",
     "recharts": "^3.9.2",
     "sqlite": "^5.1.1",
     "sqlite3": "^6.0.1",
-    "uuid": "^14.0.1"
+    "uuid": "^14.0.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.2",

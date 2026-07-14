@@ -1,3 +1,5 @@
+import { authHeaders, USER_ID_KEY } from './authStorage.js'
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 export const API_ORIGIN = API_BASE_URL.replace(/\/api$/, '')
 
@@ -5,11 +7,7 @@ const NETWORK_ERROR =
   'Impossibile contattare il server. Avvia il backend con: cd backend && npm run dev'
 
 function getUserId() {
-  return localStorage.getItem('teamflow-user-id') || 'm1'
-}
-
-function authHeaders(extra = {}) {
-  return { 'X-User-Id': getUserId(), ...extra }
+  return localStorage.getItem(USER_ID_KEY) || ''
 }
 
 async function handleResponse(response) {
@@ -29,7 +27,10 @@ async function handleResponse(response) {
 
 async function apiFetch(url, options = {}) {
   try {
-    const response = await fetch(url, options)
+    const response = await fetch(url, {
+      ...options,
+      headers: authHeaders(options.headers),
+    })
     return handleResponse(response)
   } catch (error) {
     if (error instanceof Error && error.message) throw error
@@ -146,7 +147,9 @@ export async function getTasks(params = {}) {
 export async function upsertTask(task) {
   let response
   try {
-    response = await fetch(`${API_BASE_URL}/tasks/${task.id}`)
+    response = await fetch(`${API_BASE_URL}/tasks/${task.id}`, {
+      headers: authHeaders(),
+    })
   } catch {
     throw new Error(NETWORK_ERROR)
   }
@@ -203,6 +206,7 @@ export async function uploadTaskAttachments(taskId, files) {
   try {
     const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/attachments`, {
       method: 'POST',
+      headers: authHeaders(),
       body: formData,
     })
     return handleResponse(response)

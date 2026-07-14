@@ -1,4 +1,6 @@
 import { Router } from 'express'
+import authRoutes from './authRoutes'
+import { requireAuth } from '../middleware/authMiddleware'
 import memberRoutes from './memberRoutes'
 import taskRoutes from './taskRoutes'
 import attachmentRoutes from './attachmentRoutes'
@@ -15,6 +17,10 @@ const router = Router()
 router.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
+
+router.use('/auth', authRoutes)
+
+router.use(requireAuth)
 
 router.use('/members', memberRoutes)
 router.use('/tasks', taskRoutes)

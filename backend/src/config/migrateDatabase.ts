@@ -1,4 +1,5 @@
 import type { Database } from 'sqlite'
+import { hashDefaultPassword } from '../services/authService'
 
 async function columnExists(db: Database, table: string, column: string): Promise<boolean> {
   const rows = (await db.all(`PRAGMA table_info(${table})`)) as { name: string }[]
@@ -241,5 +242,37 @@ export async function runMigrations(db: Database): Promise<void> {
 
   if (!(await columnExists(db, 'tasks', 'actualTime'))) {
     await db.exec(`ALTER TABLE tasks ADD COLUMN actualTime INTEGER`)
+  }
+
+  if (!(await columnExists(db, 'members', 'password'))) {
+    await db.exec(`ALTER TABLE members ADD COLUMN password TEXT`)
+  }
+
+  if (!(await columnExists(db, 'members', 'createdAt'))) {
+    await db.exec(`ALTER TABLE members ADD COLUMN createdAt TEXT`)
+    await db.exec(
+      `UPDATE members SET createdAt = datetime('now') WHERE createdAt IS NULL`
+    )
+  }
+
+  if (!(await columnExists(db, 'members', 'updatedAt'))) {
+    await db.exec(`ALTER TABLE members ADD COLUMN updatedAt TEXT`)
+    await db.exec(
+      `UPDATE members SET updatedAt = datetime('now') WHERE updatedAt IS NULL`
+    )
+  }
+
+  const membersWithoutPassword = (await db.all(
+    `SELECT id FROM members WHERE password IS NULL OR password = ''`
+  )) as { id: string }[]
+
+  if (membersWithoutPassword.length > 0) {
+    const hashed = await hashDefaultPassword()
+    for (const member of membersWithoutPassword) {
+      await db.run(`UPDATE members SET password = ?, updatedAt = datetime('now') WHERE id = ?`, [
+        hashed,
+        member.id,
+      ])
+    }
   }
 }

@@ -53,6 +53,23 @@ export function errorHandler(
     return
   }
 
+  const statusCode = (err as Error & { statusCode?: number }).statusCode
+  if (statusCode === 401 || statusCode === 404) {
+    res.status(statusCode).json({ message: err.message })
+    return
+  }
+
+  if (
+    err.message.includes('Email obbligatoria') ||
+    err.message.includes('Email non valida') ||
+    err.message.includes('Password obbligatoria') ||
+    err.message.includes('La password deve contenere') ||
+    err.message.includes('Dati di login non validi')
+  ) {
+    res.status(400).json({ message: err.message })
+    return
+  }
+
   if (
     err.message.includes('Il target deve essere') ||
     err.message.includes('Tipo obiettivo non valido') ||

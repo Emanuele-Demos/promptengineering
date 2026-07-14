@@ -1,14 +1,16 @@
+import { authHeaders, USER_ID_KEY } from './authStorage.js'
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
 const NETWORK_ERROR =
   'Impossibile contattare il server. Avvia il backend con: cd backend && npm run dev'
 
 function getUserId() {
-  return localStorage.getItem('teamflow-user-id') || 'm1'
+  return localStorage.getItem(USER_ID_KEY) || ''
 }
 
 function userHeaders() {
-  return { 'X-User-Id': getUserId() }
+  return authHeaders()
 }
 
 async function handleResponse(response) {

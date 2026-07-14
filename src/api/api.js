@@ -2,6 +2,8 @@
  * Backend Express su porta 3001.
  * Usa URL diretto così funziona anche se Vite parte su porta diversa (5174, ecc.).
  */
+import { authHeaders } from './authStorage.js'
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
 const NETWORK_ERROR =
@@ -41,7 +43,7 @@ export async function addStatus(valore_stato) {
   try {
     response = await fetch(API_ROUTES.add_status, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ valore_stato }),
     })
   } catch {
@@ -58,7 +60,7 @@ export async function addStatus(valore_stato) {
 export async function getStati() {
   let response
   try {
-    response = await fetch(API_ROUTES.get_stati)
+    response = await fetch(API_ROUTES.get_stati, { headers: authHeaders() })
   } catch {
     throw new Error(NETWORK_ERROR)
   }
@@ -69,7 +71,7 @@ export async function getStati() {
 export async function getCategories() {
   let response
   try {
-    response = await fetch(API_ROUTES.categories)
+    response = await fetch(API_ROUTES.categories, { headers: authHeaders() })
   } catch {
     throw new Error(NETWORK_ERROR)
   }
@@ -80,7 +82,7 @@ export async function getCategories() {
 export async function getCategory(id) {
   let response
   try {
-    response = await fetch(API_ROUTES.category(id))
+    response = await fetch(API_ROUTES.category(id), { headers: authHeaders() })
   } catch {
     throw new Error(NETWORK_ERROR)
   }
@@ -93,7 +95,7 @@ export async function createCategory({ name, color }) {
   try {
     response = await fetch(API_ROUTES.categories, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ name, color }),
     })
   } catch {
@@ -108,7 +110,7 @@ export async function updateCategory(id, { name, color }) {
   try {
     response = await fetch(API_ROUTES.category(id), {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ name, color }),
     })
   } catch {
@@ -121,7 +123,10 @@ export async function updateCategory(id, { name, color }) {
 export async function deleteCategory(id) {
   let response
   try {
-    response = await fetch(API_ROUTES.category(id), { method: 'DELETE' })
+    response = await fetch(API_ROUTES.category(id), {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
   } catch {
     throw new Error(NETWORK_ERROR)
   }

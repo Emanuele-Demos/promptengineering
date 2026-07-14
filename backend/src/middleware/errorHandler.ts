@@ -62,6 +62,15 @@ export function errorHandler(
     return
   }
 
+  if (
+    err.message.includes('Intervallo personalizzato') ||
+    err.message.includes('Date non valide') ||
+    err.message.includes('La data iniziale')
+  ) {
+    res.status(400).json({ message: err.message })
+    return
+  }
+
   if (err.message.includes('FOREIGN KEY constraint failed')) {
     res.status(400).json({ message: 'Riferimento non valido' })
     return

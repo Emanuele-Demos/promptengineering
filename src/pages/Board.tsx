@@ -9,7 +9,7 @@ import { TaskModal } from '../components/TaskModal'
 const COLUMNS: TaskStatus[] = ['todo', 'in_progress', 'review', 'done']
 
 export function Board() {
-  const { tasks, moveTask } = useApp()
+  const { tasks, moveTask, archiveTask } = useApp()
   const { categories, loading: categoriesLoading, getCategoryById } = useCategories()
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -18,8 +18,11 @@ export function Board() {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [favoriteFilter, setFavoriteFilter] = useState<'all' | 'favorites'>('all')
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [success, setSuccess] = useState('')
 
-  const filteredTasks = tasks
+  const activeTasks = tasks.filter((t) => !t.archived)
+
+  const filteredTasks = activeTasks
     .filter((t) => {
       const matchesSearch =
         t.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -58,8 +61,19 @@ export function Board() {
     }
   }
 
+  const handleArchive = (taskId: string) => {
+    archiveTask(taskId)
+    setSuccess('Task archiviato con successo')
+    setTimeout(() => setSuccess(''), 3000)
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
+      {success && (
+        <p className="mb-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+          {success}
+        </p>
+      )}
       <header className="flex flex-col gap-4 mb-4 sm:mb-6">
         <div className="hidden lg:block">
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Board Kanban</h1>
@@ -124,6 +138,7 @@ export function Board() {
             draggingId={draggingId}
             onDragStart={setDraggingId}
             getCategoryById={getCategoryById}
+            onArchive={handleArchive}
           />
         ))}
       </div>

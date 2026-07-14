@@ -14,6 +14,7 @@ interface KanbanColumnProps {
   draggingId: string | null
   onDragStart: (taskId: string) => void
   getCategoryById?: (id: string | null | undefined) => Category | undefined
+  onArchive?: (taskId: string) => void
 }
 
 export function KanbanColumn({
@@ -26,6 +27,7 @@ export function KanbanColumn({
   draggingId,
   onDragStart,
   getCategoryById,
+  onArchive,
 }: KanbanColumnProps) {
   const style = statusStyles[status]
 
@@ -67,6 +69,8 @@ export function KanbanColumn({
               category={getCategoryById?.(task.categoryId)}
               onClick={() => onTaskClick(task)}
               draggable
+              showArchiveAction
+              onArchive={onArchive}
               onDragStart={(e) => {
                 e.dataTransfer.effectAllowed = 'move'
                 onDragStart(task.id)

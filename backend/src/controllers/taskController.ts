@@ -200,7 +200,17 @@ export async function getTasks(req: Request, res: Response): Promise<void> {
 
 export async function getFavoriteTasks(req: Request, res: Response): Promise<void> {
   const userId = getUserId(req)
-  const tasks = await taskService.getAllTasks({ favorite: true, assigneeId: userId })
+  const tasks = await taskService.getAllTasks({
+    favorite: true,
+    assigneeId: userId,
+    archived: 'exclude',
+  })
+  res.json(tasks)
+}
+
+export async function getArchivedTasks(req: Request, res: Response): Promise<void> {
+  const userId = getUserId(req)
+  const tasks = await taskService.getAllTasks({ archived: 'only', assigneeId: userId })
   res.json(tasks)
 }
 
@@ -225,6 +235,8 @@ export async function createTask(req: Request, res: Response): Promise<void> {
   const task: Task = {
     id: typeof body.id === 'string' && body.id ? body.id : randomUUID(),
     ...payload,
+    archived: false,
+    archivedAt: null,
     noteItems: [],
     attachments: [],
     createdAt: now,
@@ -281,6 +293,80 @@ export async function deleteTask(req: Request, res: Response): Promise<void> {
 
   await taskService.deleteTask(id)
   res.json({ message: 'Task eliminato' })
+}
+
+export async function archiveTaskHandler(req: Request, res: Response): Promise<void> {
+  const id = getParam(req.params.id)
+  const existing = await taskService.getTaskById(id)
+  if (!existing) {
+    res.status(404).json({ message: 'Task non trovato' })
+    return
+  }
+
+  const userId = getUserId(req)
+  if (!assertTaskOwner(existing, userId, res)) return
+
+  if (existing.archived) {
+    res.status(400).json({ message: 'Task già archiviato' })
+    return
+  }
+
+  try {
+    const task = await taskService.archiveTask(id)
+    res.json(task)
+  } catch (error) {
+    res.status(400).json({
+      message: error instanceof Error ? error.message : 'Impossibile archiviare il task',
+    })
+  }
+}
+
+export async function restoreTaskHandler(req: Request, res: Response): Promise<void> {
+  const id = getParam(req.params.id)
+  const existing = await taskService.getTaskById(id)
+  if (!existing) {
+    res.status(404).json({ message: 'Task non trovato' })
+    return
+  }
+
+  const userId = getUserId(req)
+  if (!assertTaskOwner(existing, userId, res)) return
+
+  if (!existing.archived) {
+    res.status(400).json({ message: 'Task non archiviato' })
+    return
+  }
+
+  try {
+    const task = await taskService.restoreTask(id)
+    res.json(task)
+  } catch (error) {
+    res.status(400).json({
+      message: error instanceof Error ? error.message : 'Impossibile ripristinare il task',
+    })
+  }
+}
+
+export async function deleteTaskPermanent(req: Request, res: Response): Promise<void> {
+  const id = getParam(req.params.id)
+  const existing = await taskService.getTaskById(id)
+  if (!existing) {
+    res.status(404).json({ message: 'Task non trovato' })
+    return
+  }
+
+  const userId = getUserId(req)
+  if (!assertTaskOwner(existing, userId, res)) return
+
+  if (!existing.archived) {
+    res.status(400).json({
+      message: 'Solo i task archiviati possono essere eliminati definitivamente',
+    })
+    return
+  }
+
+  await taskService.deleteTask(id)
+  res.json({ message: 'Task eliminato definitivamente' })
 }
 
 export async function getOccurrences(req: Request, res: Response): Promise<void> {

@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     currentOccurrences INTEGER DEFAULT 0,
     isRecurringActive INTEGER NOT NULL DEFAULT 1,
     favorite INTEGER NOT NULL DEFAULT 0,
+    archived INTEGER NOT NULL DEFAULT 0,
+    archivedAt TEXT,
     createdAt TEXT NOT NULL,
     updatedAt TEXT NOT NULL,
     FOREIGN KEY (assigneeId) REFERENCES members(id) ON DELETE SET NULL,

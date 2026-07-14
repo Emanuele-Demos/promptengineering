@@ -101,6 +101,33 @@ export async function getFavoriteTasks() {
   })
 }
 
+export async function getArchivedTasks() {
+  return apiFetch(`${API_BASE_URL}/tasks/archived`, {
+    headers: authHeaders(),
+  })
+}
+
+export async function archiveTaskApi(taskId) {
+  return apiFetch(`${API_BASE_URL}/tasks/${taskId}/archive`, {
+    method: 'PUT',
+    headers: authHeaders(),
+  })
+}
+
+export async function restoreTaskApi(taskId) {
+  return apiFetch(`${API_BASE_URL}/tasks/${taskId}/restore`, {
+    method: 'PUT',
+    headers: authHeaders(),
+  })
+}
+
+export async function deleteTaskPermanent(taskId) {
+  return apiFetch(`${API_BASE_URL}/tasks/${taskId}/permanent`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+}
+
 export async function getTasks(params = {}) {
   const search = new URLSearchParams()
   if (params.favorite === true) search.set('favorite', 'true')

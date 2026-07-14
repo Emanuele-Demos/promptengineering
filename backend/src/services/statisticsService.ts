@@ -56,7 +56,8 @@ async function getUserTasks(userId: string, db: Database): Promise<TaskStatRow[]
             t.createdAt, t.updatedAt, c.name AS categoryName
      FROM tasks t
      LEFT JOIN categories c ON c.id = t.categoryId
-     WHERE t.assigneeId = ?`,
+     WHERE t.assigneeId = ?
+       AND (t.archived = 0 OR t.archived IS NULL)`,
     [userId]
   )) as TaskStatRow[]
 }

@@ -17,7 +17,7 @@ const RECURRING_SELECT = `id, title, description, notes, status, priority, assig
   dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
   isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
   repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
-  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite`
+  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt`
 
 function mapRecurrenceFromRow(row: TaskRow): RecurrenceFields {
   const current = row.currentOccurrences ?? row.occurrencesGenerated ?? 1
@@ -122,8 +122,8 @@ async function generateNextInstance(source: TaskRow, db: Database): Promise<bool
         dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
         isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
         repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
-        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newId,
         source.title,
@@ -156,6 +156,8 @@ async function generateNextInstance(source: TaskRow, db: Database): Promise<bool
         nextCurrent,
         newRecurrence.isRecurringActive ? 1 : 0,
         source.favorite ? 1 : 0,
+        0,
+        null,
       ]
     )
 
@@ -186,7 +188,8 @@ export async function processDueRecurrences(db?: Database): Promise<number> {
        AND isRecurringActive = 1
        AND nextOccurrence IS NOT NULL
        AND nextOccurrence <= ?
-       AND status != 'done'`,
+       AND status != 'done'
+       AND (archived = 0 OR archived IS NULL)`,
     [now]
   )) as TaskRow[]
 

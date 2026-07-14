@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Target,
   FolderKanban,
+  Archive,
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import { useProjects } from '../hooks/useProjects'
@@ -16,6 +17,7 @@ import { NotificationBell } from './NotificationBell'
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/board', label: 'Board', icon: Kanban },
+  { to: '/archivio', label: 'Archivio', icon: Archive },
   { to: '/team', label: 'Team', icon: Users },
   { to: '/gestione_stato', label: 'Gestione Stato', icon: ListChecks },
   { to: '/gestione_categorie', label: 'Categorie', icon: FolderOpen },
@@ -24,7 +26,7 @@ const links = [
 ]
 
 export function Sidebar() {
-  const { stats } = useApp()
+  const { stats, archivedTasks } = useApp()
   const { projects, loading: projectsLoading } = useProjects()
 
   return (
@@ -62,6 +64,11 @@ export function Sidebar() {
           >
             <Icon className="w-5 h-5 shrink-0" />
             {label}
+            {to === '/archivio' && archivedTasks.length > 0 && (
+              <span className="ml-auto px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded text-[10px] font-semibold">
+                {archivedTasks.length}
+              </span>
+            )}
           </NavLink>
         ))}
 

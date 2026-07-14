@@ -226,4 +226,12 @@ export async function runMigrations(db: Database): Promise<void> {
   if (!(await columnExists(db, 'tasks', 'favorite'))) {
     await db.exec(`ALTER TABLE tasks ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0`)
   }
+
+  if (!(await columnExists(db, 'tasks', 'archived'))) {
+    await db.exec(`ALTER TABLE tasks ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`)
+  }
+
+  if (!(await columnExists(db, 'tasks', 'archivedAt'))) {
+    await db.exec(`ALTER TABLE tasks ADD COLUMN archivedAt TEXT`)
+  }
 }

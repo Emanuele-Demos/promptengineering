@@ -45,7 +45,7 @@ export function DettaglioProgetto() {
   }, [loadProject])
 
   const localTasks = useMemo(
-    () => tasks.filter((t) => t.projectId === id),
+    () => tasks.filter((t) => t.projectId === id && !t.archived),
     [tasks, id]
   )
 

@@ -4,6 +4,10 @@ export function getAttachmentOpenUrl(id: string): string
 export function syncTaskStatus(taskId: string, status: string): Promise<unknown>
 export function syncTaskFavorite(taskId: string, favorite: boolean): Promise<unknown>
 export function getFavoriteTasks(): Promise<unknown[]>
+export function getArchivedTasks(): Promise<unknown[]>
+export function archiveTaskApi(taskId: string): Promise<unknown>
+export function restoreTaskApi(taskId: string): Promise<unknown>
+export function deleteTaskPermanent(taskId: string): Promise<unknown>
 export function getTasks(params?: {
   favorite?: boolean
   assigneeId?: string

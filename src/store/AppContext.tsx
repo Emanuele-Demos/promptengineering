@@ -16,7 +16,7 @@ import type {
   TeamMember,
 } from '../types'
 import { MEMBER_COLORS } from '../types'
-import { syncTaskStatus, syncTaskFavorite } from '../api/tasks.js'
+import { syncTaskStatus, syncTaskFavorite, archiveTaskApi, restoreTaskApi, deleteTaskPermanent } from '../api/tasks.js'
 
 const STORAGE_KEY = 'teamflow-data'
 
@@ -40,6 +40,9 @@ interface AppContextValue extends AppState {
   deleteTask: (id: string) => void
   moveTask: (id: string, status: TaskStatus) => void
   toggleFavorite: (id: string) => void
+  archiveTask: (id: string) => void
+  restoreTask: (id: string) => void
+  deleteTaskPermanently: (id: string) => void
   addMember: (member: Omit<TeamMember, 'id' | 'color'>) => void
   updateMember: (id: string, updates: Partial<TeamMember>) => void
   deleteMember: (id: string) => void
@@ -47,6 +50,7 @@ interface AppContextValue extends AppState {
   getMember: (id: string | null) => TeamMember | undefined
   tasksByStatus: (status: TaskStatus) => Task[]
   overdueTasks: Task[]
+  archivedTasks: Task[]
   stats: {
     total: number
     done: number
@@ -124,7 +128,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       commit((prev) => {
         const task = prev.tasks.find((t) => t.id === id)
-        if (!task) return prev
+        if (!task || task.archived) return prev
 
         const favorite = !Boolean(task.favorite)
         syncTaskFavorite(id, favorite).catch(() => {})
@@ -136,6 +140,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
               ? { ...t, favorite, updatedAt: new Date().toISOString() }
               : t,
           ),
+        }
+      })
+    },
+    [commit],
+  )
+
+  const archiveTask = useCallback(
+    (id: string) => {
+      commit((prev) => {
+        const task = prev.tasks.find((t) => t.id === id)
+        if (!task || task.archived) return prev
+
+        const now = new Date().toISOString()
+        archiveTaskApi(id).catch(() => {})
+
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) =>
+            t.id === id
+              ? { ...t, archived: true, archivedAt: now, updatedAt: now }
+              : t,
+          ),
+        }
+      })
+    },
+    [commit],
+  )
+
+  const restoreTask = useCallback(
+    (id: string) => {
+      commit((prev) => {
+        const task = prev.tasks.find((t) => t.id === id)
+        if (!task || !task.archived) return prev
+
+        const now = new Date().toISOString()
+        restoreTaskApi(id).catch(() => {})
+
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) =>
+            t.id === id
+              ? { ...t, archived: false, archivedAt: null, updatedAt: now }
+              : t,
+          ),
+        }
+      })
+    },
+    [commit],
+  )
+
+  const deleteTaskPermanently = useCallback(
+    (id: string) => {
+      commit((prev) => {
+        const task = prev.tasks.find((t) => t.id === id)
+        if (!task?.archived) return prev
+
+        deleteTaskPermanent(id).catch(() => {})
+        return {
+          ...prev,
+          tasks: prev.tasks.filter((t) => t.id !== id),
         }
       })
     },
@@ -189,6 +253,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(seedData)
   }, [])
 
+  const activeTasks = useMemo(
+    () => state.tasks.filter((t) => !t.archived),
+    [state.tasks],
+  )
+
+  const archivedTasks = useMemo(
+    () =>
+      state.tasks
+        .filter((t) => t.archived)
+        .sort(
+          (a, b) =>
+            new Date(b.archivedAt ?? b.updatedAt).getTime() -
+            new Date(a.archivedAt ?? a.updatedAt).getTime(),
+        ),
+    [state.tasks],
+  )
+
   const getMember = useCallback(
     (id: string | null) =>
       id ? state.members.find((m) => m.id === id) : undefined,
@@ -196,41 +277,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   const tasksByStatus = useCallback(
-    (status: TaskStatus) => state.tasks.filter((t) => t.status === status),
-    [state.tasks],
+    (status: TaskStatus) => activeTasks.filter((t) => t.status === status),
+    [activeTasks],
   )
 
   const overdueTasks = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
-    return state.tasks.filter(
+    return activeTasks.filter(
       (t) =>
         t.dueDate &&
         t.dueDate < today &&
         t.status !== 'done',
     )
-  }, [state.tasks])
+  }, [activeTasks])
 
   const stats = useMemo(
     () => ({
-      total: state.tasks.length,
-      done: state.tasks.filter((t) => t.status === 'done').length,
-      inProgress: state.tasks.filter((t) => t.status === 'in_progress').length,
+      total: activeTasks.length,
+      done: activeTasks.filter((t) => t.status === 'done').length,
+      inProgress: activeTasks.filter((t) => t.status === 'in_progress').length,
       overdue: overdueTasks.length,
-      completedOnTime: state.tasks.filter(
+      completedOnTime: activeTasks.filter(
         (t) =>
           t.status === 'done' &&
           (!t.dueDate || t.updatedAt.slice(0, 10) <= t.dueDate),
       ).length,
-      completedLate: state.tasks.filter(
+      completedLate: activeTasks.filter(
         (t) =>
           t.status === 'done' &&
           !!t.dueDate &&
           t.updatedAt.slice(0, 10) > t.dueDate,
       ).length,
-      inReview: state.tasks.filter((t) => t.status === 'review').length,
-      todo: state.tasks.filter((t) => t.status === 'todo').length,
+      inReview: activeTasks.filter((t) => t.status === 'review').length,
+      todo: activeTasks.filter((t) => t.status === 'todo').length,
     }),
-    [state.tasks, overdueTasks],
+    [activeTasks, overdueTasks],
   )
 
   const value = useMemo(
@@ -241,6 +322,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteTask,
       moveTask,
       toggleFavorite,
+      archiveTask,
+      restoreTask,
+      deleteTaskPermanently,
       addMember,
       updateMember,
       deleteMember,
@@ -248,6 +332,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getMember,
       tasksByStatus,
       overdueTasks,
+      archivedTasks,
       stats,
     }),
     [
@@ -257,6 +342,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteTask,
       moveTask,
       toggleFavorite,
+      archiveTask,
+      restoreTask,
+      deleteTaskPermanently,
       addMember,
       updateMember,
       deleteMember,
@@ -264,6 +352,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getMember,
       tasksByStatus,
       overdueTasks,
+      archivedTasks,
       stats,
     ],
   )

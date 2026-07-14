@@ -26,7 +26,8 @@ export async function processDueReminders(db?: Database): Promise<number> {
      WHERE reminderDate IS NOT NULL
        AND reminderDate <= ?
        AND reminderSentAt IS NULL
-       AND status != 'done'`,
+       AND status != 'done'
+       AND (archived = 0 OR archived IS NULL)`,
     [now]
   )) as DueReminderRow[]
 

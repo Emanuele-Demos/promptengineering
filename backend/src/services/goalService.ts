@@ -63,7 +63,8 @@ export async function countCompletedTasksInPeriod(
      WHERE status = 'done'
        AND assigneeId = ?
        AND updatedAt >= ?
-       AND updatedAt <= ?`,
+       AND updatedAt <= ?
+       AND (archived = 0 OR archived IS NULL)`,
     [userId, periodStart, periodEnd]
   )
   return row?.count ?? 0

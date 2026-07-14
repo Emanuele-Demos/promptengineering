@@ -75,6 +75,7 @@ async function mapProjectWithStats(
        FROM tasks t
        LEFT JOIN categories c ON c.id = t.categoryId
        WHERE t.projectId = ?
+         AND (t.archived = 0 OR t.archived IS NULL)
        ORDER BY t.dueDate IS NULL, t.dueDate ASC, t.title COLLATE NOCASE ASC`,
       [row.id]
     )) as ProjectTaskRow[]
@@ -89,7 +90,7 @@ const PROJECT_STATS_SELECT = `
          COUNT(t.id) AS totalTasks,
          SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END) AS completedTasks
   FROM projects p
-  LEFT JOIN tasks t ON t.projectId = p.id
+  LEFT JOIN tasks t ON t.projectId = p.id AND (t.archived = 0 OR t.archived IS NULL)
 `
 
 export async function getProjectsByOwner(

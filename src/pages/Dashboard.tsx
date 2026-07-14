@@ -54,6 +54,7 @@ const FILTER_OPTIONS: { value: StatisticsFilter; label: string }[] = [
 
 export function Dashboard() {
   const { tasks, members, stats, overdueTasks, getMember } = useApp()
+  const activeTasks = tasks.filter((t) => !t.archived)
   const { daily, weekly, loading: goalsLoading } = useGoals()
   const [filter, setFilter] = useState<StatisticsFilter>('7d')
   const [customFrom, setCustomFrom] = useState('')
@@ -64,14 +65,14 @@ export function Dashboard() {
     to: filter === 'custom' ? customTo : undefined,
   })
 
-  const recentTasks = [...tasks]
+  const recentTasks = [...activeTasks]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 5)
 
   const memberWorkload = members.map((m) => ({
     member: m,
-    active: tasks.filter((t) => t.assigneeId === m.id && t.status !== 'done').length,
-    done: tasks.filter((t) => t.assigneeId === m.id && t.status === 'done').length,
+    active: activeTasks.filter((t) => t.assigneeId === m.id && t.status !== 'done').length,
+    done: activeTasks.filter((t) => t.assigneeId === m.id && t.status === 'done').length,
   }))
 
   const completionRate = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0

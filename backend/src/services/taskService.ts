@@ -12,7 +12,15 @@ const TASK_SELECT = `id, title, description, notes, status, priority, assigneeId
   dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
   isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
   repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
-  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite`
+  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt`
+
+export type TaskArchivedFilter = 'exclude' | 'only' | 'all'
+
+export interface TaskQueryOptions {
+  favorite?: boolean
+  assigneeId?: string
+  archived?: TaskArchivedFilter
+}
 
 function mapRecurrenceToTask(row: TaskRow) {
   return {
@@ -59,11 +67,13 @@ export async function buildTaskFromRow(row: TaskRow, db: Database): Promise<Task
     row.categoryId ? getCategoryById(row.categoryId, db) : Promise.resolve(undefined),
   ])
 
-  const { reminderSentAt: _sent, isRecurring: _ir, favorite: fav, ...taskBase } = row
+  const { reminderSentAt: _sent, isRecurring: _ir, favorite: fav, archived: arch, ...taskBase } = row
 
   return {
     ...taskBase,
     favorite: Boolean(fav),
+    archived: Boolean(arch),
+    archivedAt: row.archivedAt ?? null,
     reminderType: (row.reminderType as ReminderType | null) ?? null,
     ...mapRecurrenceToTask(row),
     tags,
@@ -129,12 +139,19 @@ function recurrenceInsertValues(
 }
 
 export async function getAllTasks(
-  options?: { favorite?: boolean; assigneeId?: string },
+  options?: TaskQueryOptions,
   db?: Database
 ): Promise<Task[]> {
   const connection = db ?? (await getDatabase())
   let query = `SELECT ${TASK_SELECT} FROM tasks WHERE 1=1`
   const params: string[] = []
+
+  const archivedFilter = options?.archived ?? 'exclude'
+  if (archivedFilter === 'exclude') {
+    query += ` AND (archived = 0 OR archived IS NULL)`
+  } else if (archivedFilter === 'only') {
+    query += ` AND archived = 1`
+  }
 
   if (options?.favorite === true) {
     query += ` AND favorite = 1`
@@ -147,7 +164,10 @@ export async function getAllTasks(
     params.push(options.assigneeId)
   }
 
-  query += ` ORDER BY favorite DESC, createdAt DESC`
+  query +=
+    archivedFilter === 'only'
+      ? ` ORDER BY archivedAt DESC, createdAt DESC`
+      : ` ORDER BY favorite DESC, createdAt DESC`
 
   const rows = (await connection.all(query, params)) as TaskRow[]
 
@@ -183,8 +203,8 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
         isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
         repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
-        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         task.id,
         task.title,
@@ -203,6 +223,8 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         task.updatedAt,
         ...recurrenceInsertValues(task),
         task.favorite ? 1 : 0,
+        task.archived ? 1 : 0,
+        task.archivedAt ?? null,
       ]
     )
 
@@ -242,6 +264,8 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         nextOccurrence: task.nextOccurrence ?? null,
         parentTaskId: task.parentTaskId ?? null,
         favorite: task.favorite ? 1 : 0,
+        archived: task.archived ? 1 : 0,
+        archivedAt: task.archivedAt ?? null,
       },
       connection
     )
@@ -286,7 +310,7 @@ export async function updateTask(
         repeatEndType = ?, repeatEnd = ?, repeatOccurrences = ?,
         occurrencesGenerated = ?, lastGeneratedAt = ?, nextOccurrence = ?, parentTaskId = ?,
         repeatDays = ?, maxOccurrences = ?, currentOccurrences = ?, isRecurringActive = ?,
-        favorite = ?
+        favorite = ?, archived = ?, archivedAt = ?
        WHERE id = ?`,
       [
         task.title,
@@ -304,6 +328,8 @@ export async function updateTask(
         task.updatedAt,
         ...recurrenceInsertValues(task),
         task.favorite ? 1 : 0,
+        task.archived ? 1 : 0,
+        task.archivedAt ?? null,
         id,
       ]
     )
@@ -324,6 +350,40 @@ export async function updateTask(
 export async function deleteTask(id: string, db?: Database): Promise<void> {
   const connection = db ?? (await getDatabase())
   await connection.run(`DELETE FROM tasks WHERE id = ?`, [id])
+}
+
+export async function archiveTask(id: string, db?: Database): Promise<Task> {
+  const connection = db ?? (await getDatabase())
+  const existing = await getTaskById(id, connection)
+  if (!existing) throw new Error('Task non trovato')
+  if (existing.archived) throw new Error('Task già archiviato')
+
+  const now = new Date().toISOString()
+  await connection.run(
+    `UPDATE tasks SET archived = 1, archivedAt = ?, updatedAt = ? WHERE id = ?`,
+    [now, now, id]
+  )
+
+  const updated = await getTaskById(id, connection)
+  if (!updated) throw new Error('Task non trovato')
+  return updated
+}
+
+export async function restoreTask(id: string, db?: Database): Promise<Task> {
+  const connection = db ?? (await getDatabase())
+  const existing = await getTaskById(id, connection)
+  if (!existing) throw new Error('Task non trovato')
+  if (!existing.archived) throw new Error('Task non archiviato')
+
+  const now = new Date().toISOString()
+  await connection.run(
+    `UPDATE tasks SET archived = 0, archivedAt = NULL, updatedAt = ? WHERE id = ?`,
+    [now, id]
+  )
+
+  const updated = await getTaskById(id, connection)
+  if (!updated) throw new Error('Task non trovato')
+  return updated
 }
 
 export async function upsertTask(

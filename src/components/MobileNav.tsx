@@ -15,6 +15,7 @@ const links = [
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
   '/board': 'Board Kanban',
+  '/archivio': 'Archivio',
   '/team': 'Team',
   '/gestione_stato': 'Gestione Stato',
   '/gestione_categorie': 'Gestione Categorie',

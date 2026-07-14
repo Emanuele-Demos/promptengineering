@@ -1,4 +1,4 @@
-import { Calendar, GripVertical, Paperclip, Repeat, Star } from 'lucide-react'
+import { Calendar, GripVertical, Paperclip, Repeat, Star, Archive } from 'lucide-react'
 import type { Task, Category } from '../types'
 import { useApp } from '../store/AppContext'
 import { formatDate, isOverdue } from '../utils/helpers'
@@ -13,6 +13,8 @@ interface TaskCardProps {
   draggable?: boolean
   onDragStart?: (e: React.DragEvent) => void
   category?: Category
+  showArchiveAction?: boolean
+  onArchive?: (taskId: string) => void
 }
 
 export function TaskCard({
@@ -21,6 +23,8 @@ export function TaskCard({
   draggable = false,
   onDragStart,
   category,
+  showArchiveAction = false,
+  onArchive,
 }: TaskCardProps) {
   const { getMember, toggleFavorite } = useApp()
   const assignee = getMember(task.assigneeId)
@@ -127,6 +131,23 @@ export function TaskCard({
               )}
             </div>
           </div>
+
+          {showArchiveAction && onArchive && (
+            <div className="mt-2 pt-2 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onArchive(task.id)
+                }}
+                className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+                title="Archivia task"
+              >
+                <Archive className="w-3.5 h-3.5" />
+                Archivia
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

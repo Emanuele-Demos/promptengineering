@@ -157,6 +157,8 @@ export interface Task {
   nextOccurrence?: string | null
   parentTaskId?: string | null
   favorite?: boolean
+  archived?: boolean
+  archivedAt?: string | null
   tags: string[]
   createdAt: string
   updatedAt: string
@@ -197,6 +199,8 @@ interface TaskRow {
   currentOccurrences: number | null
   isRecurringActive: number | null
   favorite: number | null
+  archived: number | null
+  archivedAt: string | null
   createdAt: string
   updatedAt: string
 }

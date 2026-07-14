@@ -3,6 +3,7 @@ import type { Task, TaskRow } from '../types'
 import { getDatabase } from '../config/database'
 import { getAttachmentsByTaskId } from './attachmentService'
 import { getNotesByTaskId } from './noteService'
+import { categoryExists, getCategoryById } from './categoryService'
 
 async function getTagsForTask(taskId: string, db: Database): Promise<string[]> {
   const rows = (await db.all(
@@ -21,11 +22,12 @@ async function getLinksForTask(taskId: string, db: Database): Promise<string[]> 
 }
 
 export async function buildTaskFromRow(row: TaskRow, db: Database): Promise<Task> {
-  const [tags, links, attachments, noteItems] = await Promise.all([
+  const [tags, links, attachments, noteItems, category] = await Promise.all([
     getTagsForTask(row.id, db),
     getLinksForTask(row.id, db),
     getAttachmentsByTaskId(row.id, db),
     getNotesByTaskId(row.id, db),
+    row.categoryId ? getCategoryById(row.categoryId, db) : Promise.resolve(undefined),
   ])
 
   return {
@@ -34,6 +36,7 @@ export async function buildTaskFromRow(row: TaskRow, db: Database): Promise<Task
     links,
     attachments,
     noteItems,
+    category: category ?? null,
   }
 }
 
@@ -54,7 +57,7 @@ async function replaceTaskLinks(taskId: string, links: string[], db: Database): 
 export async function getAllTasks(db?: Database): Promise<Task[]> {
   const connection = db ?? (await getDatabase())
   const rows = (await connection.all(
-    `SELECT id, title, description, notes, status, priority, assigneeId, dueDate, createdAt, updatedAt
+    `SELECT id, title, description, notes, status, priority, assigneeId, categoryId, dueDate, createdAt, updatedAt
      FROM tasks ORDER BY createdAt DESC`
   )) as TaskRow[]
 
@@ -64,7 +67,7 @@ export async function getAllTasks(db?: Database): Promise<Task[]> {
 export async function getTaskById(id: string, db?: Database): Promise<Task | undefined> {
   const connection = db ?? (await getDatabase())
   const row = await connection.get<TaskRow>(
-    `SELECT id, title, description, notes, status, priority, assigneeId, dueDate, createdAt, updatedAt
+    `SELECT id, title, description, notes, status, priority, assigneeId, categoryId, dueDate, createdAt, updatedAt
      FROM tasks WHERE id = ?`,
     [id]
   )
@@ -76,12 +79,16 @@ export async function getTaskById(id: string, db?: Database): Promise<Task | und
 export async function createTask(task: Task, db?: Database): Promise<Task> {
   const connection = db ?? (await getDatabase())
 
+  if (task.categoryId && !(await categoryExists(task.categoryId, connection))) {
+    throw new Error('Categoria non valida')
+  }
+
   await connection.run('BEGIN')
   try {
     await connection.run(
       `INSERT INTO tasks (
-        id, title, description, notes, status, priority, assigneeId, dueDate, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, title, description, notes, status, priority, assigneeId, categoryId, dueDate, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         task.id,
         task.title,
@@ -90,6 +97,7 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         task.status,
         task.priority,
         task.assigneeId,
+        task.categoryId,
         task.dueDate,
         task.createdAt,
         task.updatedAt,
@@ -108,6 +116,7 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         status: task.status,
         priority: task.priority,
         assigneeId: task.assigneeId,
+        categoryId: task.categoryId,
         dueDate: task.dueDate,
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
@@ -127,12 +136,16 @@ export async function updateTask(
 ): Promise<Task> {
   const connection = db ?? (await getDatabase())
 
+  if (task.categoryId && !(await categoryExists(task.categoryId, connection))) {
+    throw new Error('Categoria non valida')
+  }
+
   await connection.run('BEGIN')
   try {
     await connection.run(
       `UPDATE tasks SET
         title = ?, description = ?, notes = ?, status = ?, priority = ?,
-        assigneeId = ?, dueDate = ?, updatedAt = ?
+        assigneeId = ?, categoryId = ?, dueDate = ?, updatedAt = ?
        WHERE id = ?`,
       [
         task.title,
@@ -141,6 +154,7 @@ export async function updateTask(
         task.status,
         task.priority,
         task.assigneeId,
+        task.categoryId,
         task.dueDate,
         task.updatedAt,
         id,

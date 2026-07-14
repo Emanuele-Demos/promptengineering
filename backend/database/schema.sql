@@ -8,6 +8,14 @@ CREATE TABLE IF NOT EXISTS members (
     color TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS categories (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    color TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -16,10 +24,12 @@ CREATE TABLE IF NOT EXISTS tasks (
     status TEXT NOT NULL,
     priority TEXT NOT NULL,
     assigneeId TEXT,
+    categoryId TEXT,
     dueDate TEXT,
     createdAt TEXT NOT NULL,
     updatedAt TEXT NOT NULL,
-    FOREIGN KEY (assigneeId) REFERENCES members(id) ON DELETE SET NULL
+    FOREIGN KEY (assigneeId) REFERENCES members(id) ON DELETE SET NULL,
+    FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS attachments (

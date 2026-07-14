@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react'
-import type { Task, TaskStatus } from '../types'
+import type { Task, TaskStatus, Category } from '../types'
 import { STATUS_LABELS } from '../types'
 import { statusStyles } from '../utils/helpers'
 import { TaskCard } from './TaskCard'
@@ -13,6 +13,7 @@ interface KanbanColumnProps {
   onDragOver: (e: React.DragEvent) => void
   draggingId: string | null
   onDragStart: (taskId: string) => void
+  getCategoryById?: (id: string | null | undefined) => Category | undefined
 }
 
 export function KanbanColumn({
@@ -24,6 +25,7 @@ export function KanbanColumn({
   onDragOver,
   draggingId,
   onDragStart,
+  getCategoryById,
 }: KanbanColumnProps) {
   const style = statusStyles[status]
 
@@ -62,6 +64,7 @@ export function KanbanColumn({
           >
             <TaskCard
               task={task}
+              category={getCategoryById?.(task.categoryId)}
               onClick={() => onTaskClick(task)}
               draggable
               onDragStart={(e) => {

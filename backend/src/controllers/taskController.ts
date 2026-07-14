@@ -26,6 +26,10 @@ function buildTaskPayload(
       body.assigneeId !== undefined
         ? ((body.assigneeId as string | null) || null)
         : (existing?.assigneeId ?? null),
+    categoryId:
+      body.categoryId !== undefined
+        ? ((body.categoryId as string | null) || null)
+        : (existing?.categoryId ?? null),
     dueDate:
       body.dueDate !== undefined
         ? ((body.dueDate as string | null) || null)

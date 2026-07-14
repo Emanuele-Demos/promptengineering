@@ -4,6 +4,7 @@ import type { Task, TaskPriority, TaskStatus } from '../types'
 import { PRIORITY_LABELS, STATUS_LABELS } from '../types'
 import { useApp } from '../store/AppContext'
 import { upsertTask } from '../api/tasks.js'
+import { useCategories } from '../hooks/useCategories'
 import { TaskNotesSection } from './TaskNotesSection'
 import { TaskAttachmentsSection } from './TaskAttachmentsSection'
 
@@ -24,6 +25,7 @@ const emptyForm = {
   assigneeId: '' as string,
   dueDate: '',
   tags: '',
+  categoryId: '',
 }
 
 export function TaskModal({
@@ -33,6 +35,7 @@ export function TaskModal({
   onClose,
 }: TaskModalProps) {
   const { members, addTask, updateTask, deleteTask } = useApp()
+  const { categories, loading: categoriesLoading } = useCategories()
   const isEditing = !!task
 
   const [form, setForm] = useState(emptyForm)
@@ -50,6 +53,7 @@ export function TaskModal({
         assigneeId: task.assigneeId ?? '',
         dueDate: task.dueDate ?? '',
         tags: task.tags.join(', '),
+        categoryId: task.categoryId ?? '',
       })
     } else {
       setForm({ ...emptyForm, status: defaultStatus })
@@ -69,6 +73,7 @@ export function TaskModal({
     status: form.status,
     priority: form.priority,
     assigneeId: form.assigneeId || null,
+    categoryId: form.categoryId || null,
     dueDate: form.dueDate || null,
     tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
     createdAt,
@@ -99,6 +104,7 @@ export function TaskModal({
         status: payload.status,
         priority: payload.priority,
         assigneeId: payload.assigneeId,
+        categoryId: payload.categoryId,
         dueDate: payload.dueDate,
         tags: payload.tags,
       })
@@ -114,6 +120,7 @@ export function TaskModal({
         status: form.status,
         priority: form.priority,
         assigneeId: form.assigneeId || null,
+        categoryId: form.categoryId || null,
         dueDate: form.dueDate || null,
         tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
       }
@@ -247,6 +254,35 @@ export function TaskModal({
                 onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
+            <div className="flex items-center gap-2">
+              <select
+                value={form.categoryId}
+                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                disabled={categoriesLoading}
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Nessuna categoria</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              {form.categoryId && (
+                <span
+                  className="w-8 h-8 rounded-lg border border-slate-200 shrink-0"
+                  style={{
+                    backgroundColor:
+                      categories.find((c) => c.id === form.categoryId)?.color ?? '#94A3B8',
+                  }}
+                  title="Anteprima colore categoria"
+                />
+              )}
             </div>
           </div>
 

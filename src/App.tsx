@@ -5,6 +5,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Board } from "./pages/Board";
 import { Team } from "./pages/Team";
 import { GestioneStato } from "./pages/GestioneStato";
+import { GestioneCategorie } from "./pages/GestioneCategorie";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
             <Route path="board" element={<Board />} />
             <Route path="team" element={<Team />} />
             <Route path="gestione_stato" element={<GestioneStato />} />
+            <Route path="gestione_categorie" element={<GestioneCategorie />} />
           </Route>
         </Routes>
       </AppProvider>

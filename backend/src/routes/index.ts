@@ -4,6 +4,7 @@ import taskRoutes from './taskRoutes'
 import attachmentRoutes from './attachmentRoutes'
 import statoRoutes from './statoRoutes'
 import noteRoutes from './noteRoutes'
+import categoryRoutes from './categoryRoutes'
 
 const router = Router()
 
@@ -16,5 +17,6 @@ router.use('/tasks', taskRoutes)
 router.use('/', attachmentRoutes)
 router.use('/', statoRoutes)
 router.use('/', noteRoutes)
+router.use('/', categoryRoutes)
 
 export default router

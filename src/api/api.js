@@ -27,6 +27,8 @@ export const API_ROUTES = {
   add_status: `${API_BASE_URL}/add_status`,
   /** Restituisce la lista degli stati presenti nel database */
   get_stati: `${API_BASE_URL}/stati`,
+  categories: `${API_BASE_URL}/categories`,
+  category: (id) => `${API_BASE_URL}/categories/${id}`,
 }
 
 /**
@@ -57,6 +59,69 @@ export async function getStati() {
   let response
   try {
     response = await fetch(API_ROUTES.get_stati)
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  return handleResponse(response)
+}
+
+export async function getCategories() {
+  let response
+  try {
+    response = await fetch(API_ROUTES.categories)
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  return handleResponse(response)
+}
+
+export async function getCategory(id) {
+  let response
+  try {
+    response = await fetch(API_ROUTES.category(id))
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  return handleResponse(response)
+}
+
+export async function createCategory({ name, color }) {
+  let response
+  try {
+    response = await fetch(API_ROUTES.categories, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, color }),
+    })
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  return handleResponse(response)
+}
+
+export async function updateCategory(id, { name, color }) {
+  let response
+  try {
+    response = await fetch(API_ROUTES.category(id), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, color }),
+    })
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  return handleResponse(response)
+}
+
+export async function deleteCategory(id) {
+  let response
+  try {
+    response = await fetch(API_ROUTES.category(id), { method: 'DELETE' })
   } catch {
     throw new Error(NETWORK_ERROR)
   }

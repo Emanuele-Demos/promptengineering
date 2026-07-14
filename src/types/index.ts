@@ -9,6 +9,15 @@ export interface TeamMember {
   color: string
 }
 
+export interface Category {
+  id: string
+  name: string
+  color: string
+  createdAt: string
+  updatedAt: string
+  taskCount?: number
+}
+
 export interface TaskNote {
   id: string
   taskId: string
@@ -39,6 +48,7 @@ export interface Task {
   status: TaskStatus
   priority: TaskPriority
   assigneeId: string | null
+  categoryId: string | null
   dueDate: string | null
   tags: string[]
   createdAt: string

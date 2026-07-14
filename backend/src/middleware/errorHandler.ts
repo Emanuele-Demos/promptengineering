@@ -19,7 +19,22 @@ export function errorHandler(
   }
 
   if (err.message.includes('UNIQUE constraint failed')) {
-    res.status(409).json({ message: 'Questo stato esiste già nel sistema' })
+    const message = err.message.includes('categories.name')
+      ? 'Esiste già una categoria con questo nome'
+      : err.message.includes('stato')
+        ? 'Questo stato esiste già nel sistema'
+        : 'Valore già presente nel sistema'
+    res.status(409).json({ message })
+    return
+  }
+
+  if (
+    err.message.includes('Il nome della categoria') ||
+    err.message.includes('Il colore deve essere') ||
+    err.message.includes('Categoria non trovata') ||
+    err.message.includes('Categoria non valida')
+  ) {
+    res.status(400).json({ message: err.message })
     return
   }
 

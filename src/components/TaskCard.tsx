@@ -1,15 +1,17 @@
 import { Calendar, GripVertical, Paperclip } from 'lucide-react'
-import type { Task } from '../types'
+import type { Task, Category } from '../types'
 import { useApp } from '../store/AppContext'
 import { formatDate, isOverdue } from '../utils/helpers'
 import { MemberAvatar } from './MemberAvatar'
 import { PriorityBadge } from './PriorityBadge'
+import { CategoryBadge } from './CategoryBadge'
 
 interface TaskCardProps {
   task: Task
   onClick: () => void
   draggable?: boolean
   onDragStart?: (e: React.DragEvent) => void
+  category?: Category
 }
 
 export function TaskCard({
@@ -17,6 +19,7 @@ export function TaskCard({
   onClick,
   draggable = false,
   onDragStart,
+  category,
 }: TaskCardProps) {
   const { getMember } = useApp()
   const assignee = getMember(task.assigneeId)
@@ -34,9 +37,12 @@ export function TaskCard({
           <GripVertical className="w-4 h-4 text-slate-300 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
         )}
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-slate-900 leading-snug mb-2">
-            {task.title}
-          </h4>
+          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+            <h4 className="text-sm font-semibold text-slate-900 leading-snug">
+              {task.title}
+            </h4>
+            {category && <CategoryBadge category={category} />}
+          </div>
 
           {task.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, Search } from 'lucide-react'
 import type { Task, TaskStatus } from '../types'
 import { useApp } from '../store/AppContext'
+import { useCategories } from '../hooks/useCategories'
 import { KanbanColumn } from '../components/KanbanColumn'
 import { TaskModal } from '../components/TaskModal'
 
@@ -9,18 +10,25 @@ const COLUMNS: TaskStatus[] = ['todo', 'in_progress', 'review', 'done']
 
 export function Board() {
   const { tasks, moveTask } = useApp()
+  const { categories, loading: categoriesLoading, getCategoryById } = useCategories()
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('todo')
   const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [draggingId, setDraggingId] = useState<string | null>(null)
 
-  const filteredTasks = tasks.filter(
-    (t) =>
+  const filteredTasks = tasks.filter((t) => {
+    const matchesSearch =
       t.title.toLowerCase().includes(search.toLowerCase()) ||
       t.description.toLowerCase().includes(search.toLowerCase()) ||
-      t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())),
-  )
+      t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
+
+    const matchesCategory =
+      !categoryFilter || (t.categoryId ?? null) === categoryFilter
+
+    return matchesSearch && matchesCategory
+  })
 
   const openCreate = (status: TaskStatus) => {
     setSelectedTask(null)
@@ -60,6 +68,20 @@ export function Board() {
               className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            disabled={categoriesLoading}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white min-w-[10rem]"
+            aria-label="Filtra per categoria"
+          >
+            <option value="">Tutte le categorie</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
           <button
             onClick={() => openCreate('todo')}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shrink-0"
@@ -82,6 +104,7 @@ export function Board() {
             onDragOver={(e) => e.preventDefault()}
             draggingId={draggingId}
             onDragStart={setDraggingId}
+            getCategoryById={getCategoryById}
           />
         ))}
       </div>

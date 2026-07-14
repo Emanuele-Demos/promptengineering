@@ -65,4 +65,24 @@ export async function runMigrations(db: Database): Promise<void> {
     await db.exec(`DROP TABLE attachments`)
     await db.exec(`ALTER TABLE attachments_new RENAME TO attachments`)
   }
+
+  const categoriesTable = (await db.all(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name='categories'`
+  )) as { name: string }[]
+
+  if (categoriesTable.length === 0) {
+    await db.exec(`
+      CREATE TABLE categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        color TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      )
+    `)
+  }
+
+  if (!(await columnExists(db, 'tasks', 'categoryId'))) {
+    await db.exec(`ALTER TABLE tasks ADD COLUMN categoryId TEXT REFERENCES categories(id) ON DELETE SET NULL`)
+  }
 }

@@ -5,6 +5,7 @@ import {
   Users,
   Zap,
   ListChecks,
+  FolderOpen,
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 
@@ -13,6 +14,7 @@ const links = [
   { to: '/board', label: 'Board', icon: Kanban },
   { to: '/team', label: 'Team', icon: Users },
   { to: '/gestione_stato', label: 'Gestione Stato', icon: ListChecks },
+  { to: '/gestione_categorie', label: 'Categorie', icon: FolderOpen },
 ]
 
 export function Sidebar() {

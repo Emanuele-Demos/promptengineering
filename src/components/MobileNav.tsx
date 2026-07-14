@@ -1,11 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Kanban, Users, Zap, ListChecks } from 'lucide-react'
+import { LayoutDashboard, Kanban, Users, Zap, ListChecks, FolderOpen } from 'lucide-react'
 
 const links = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
   { to: '/board', label: 'Board', icon: Kanban },
   { to: '/team', label: 'Team', icon: Users },
   { to: '/gestione_stato', label: 'Stati', icon: ListChecks },
+  { to: '/gestione_categorie', label: 'Categorie', icon: FolderOpen },
 ]
 
 const pageTitles: Record<string, string> = {
@@ -13,6 +14,7 @@ const pageTitles: Record<string, string> = {
   '/board': 'Board Kanban',
   '/team': 'Team',
   '/gestione_stato': 'Gestione Stato',
+  '/gestione_categorie': 'Gestione Categorie',
 }
 
 export function MobileHeader() {

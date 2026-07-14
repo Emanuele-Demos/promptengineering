@@ -1,8 +1,26 @@
 /**
- * Configurazione API disponibili sul frontend.
- * Base URL del backend Express (SQLite3).
+ * Backend Express su porta 3001.
+ * Usa URL diretto così funziona anche se Vite parte su porta diversa (5174, ecc.).
  */
-const API_BASE_URL = '/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
+const NETWORK_ERROR =
+  'Impossibile contattare il server. Avvia il backend con: cd backend && npm run dev'
+
+async function handleResponse(response) {
+  let data = {}
+  try {
+    data = await response.json()
+  } catch {
+    /* risposta non JSON */
+  }
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Errore durante la richiesta')
+  }
+
+  return data
+}
 
 export const API_ROUTES = {
   /** Aggiunge un nuovo stato al database */
@@ -17,19 +35,18 @@ export const API_ROUTES = {
  * @returns {Promise<{ slug: string, valore_stato: string }>}
  */
 export async function addStatus(valore_stato) {
-  const response = await fetch(API_ROUTES.add_status, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ valore_stato }),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    throw new Error(data.message || 'Errore durante il salvataggio')
+  let response
+  try {
+    response = await fetch(API_ROUTES.add_status, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ valore_stato }),
+    })
+  } catch {
+    throw new Error(NETWORK_ERROR)
   }
 
-  return data
+  return handleResponse(response)
 }
 
 /**
@@ -37,11 +54,12 @@ export async function addStatus(valore_stato) {
  * @returns {Promise<Array<{ slug: string, valore_stato: string }>>}
  */
 export async function getStati() {
-  const response = await fetch(API_ROUTES.get_stati)
-
-  if (!response.ok) {
-    throw new Error('Errore durante il caricamento degli stati')
+  let response
+  try {
+    response = await fetch(API_ROUTES.get_stati)
+  } catch {
+    throw new Error(NETWORK_ERROR)
   }
 
-  return response.json()
+  return handleResponse(response)
 }

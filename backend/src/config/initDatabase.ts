@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { getDatabase } from './database'
 import { seedDatabase } from './seedDatabase'
+import { runMigrations } from './migrateDatabase'
 
 export async function initializeDatabase(): Promise<void> {
   const db = await getDatabase()
@@ -9,6 +10,7 @@ export async function initializeDatabase(): Promise<void> {
   const schemaPath = path.join(__dirname, '../../database/schema.sql')
   const schema = fs.readFileSync(schemaPath, 'utf-8')
   await db.exec(schema)
+  await runMigrations(db)
 
   const row = await db.get<{ count: number }>('SELECT COUNT(*) AS count FROM members')
 

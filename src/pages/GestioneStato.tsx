@@ -2,9 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { ListChecks, Plus } from 'lucide-react'
 import { addStatus, getStati } from '../api/api.js'
 
+interface StatoItem {
+  slug: string
+  valore_stato: string
+}
+
 export function GestioneStato() {
   const [valoreStato, setValoreStato] = useState('')
-  const [stati, setStati] = useState([])
+  const [stati, setStati] = useState<StatoItem[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -27,7 +32,7 @@ export function GestioneStato() {
     loadStati()
   }, [loadStati])
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setSuccess('')

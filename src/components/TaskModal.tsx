@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import type { Task, TaskPriority, TaskStatus } from '../types'
-import {
-  PRIORITY_LABELS,
-  STATUS_LABELS,
-} from '../types'
+import { PRIORITY_LABELS, STATUS_LABELS } from '../types'
 import { useApp } from '../store/AppContext'
-import { AttachmentUploader } from './AttachmentUploader'
+import { upsertTask } from '../api/tasks.js'
+import { TaskNotesSection } from './TaskNotesSection'
+import { TaskAttachmentsSection } from './TaskAttachmentsSection'
 
 interface TaskModalProps {
   task?: Task | null
@@ -20,7 +19,6 @@ const emptyForm = {
   description: '',
   notes: '',
   links: '',
-  attachments: [],
   status: 'todo' as TaskStatus,
   priority: 'medium' as TaskPriority,
   assigneeId: '' as string,
@@ -38,6 +36,7 @@ export function TaskModal({
   const isEditing = !!task
 
   const [form, setForm] = useState(emptyForm)
+  const [syncError, setSyncError] = useState('')
 
   useEffect(() => {
     if (task) {
@@ -46,7 +45,6 @@ export function TaskModal({
         description: task.description,
         notes: task.notes,
         links: task.links.join(', '),
-        attachments: task.attachments,
         status: task.status,
         priority: task.priority,
         assigneeId: task.assigneeId ?? '',
@@ -56,37 +54,71 @@ export function TaskModal({
     } else {
       setForm({ ...emptyForm, status: defaultStatus })
     }
+    setSyncError('')
   }, [task, defaultStatus, open])
 
   if (!open) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const buildPayload = (taskId: string, createdAt: string) => ({
+    id: taskId,
+    title: form.title.trim(),
+    description: form.description.trim(),
+    notes: form.notes.trim(),
+    links: form.links.split(',').map((l) => l.trim()).filter(Boolean),
+    attachments: [],
+    status: form.status,
+    priority: form.priority,
+    assigneeId: form.assigneeId || null,
+    dueDate: form.dueDate || null,
+    tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+    createdAt,
+    updatedAt: new Date().toISOString(),
+  })
+
+  const syncToBackend = async (payload: ReturnType<typeof buildPayload>) => {
+    try {
+      await upsertTask(payload)
+      setSyncError('')
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Errore sincronizzazione backend')
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title.trim()) return
 
-    const payload = {
-      title: form.title.trim(),
-      description: form.description.trim(),
-      notes: form.notes.trim(),
-      links: form.links
-        .split(',')
-        .map((l) => l.trim())
-        .filter(Boolean),
-      attachments: form.attachments,
-      status: form.status,
-      priority: form.priority,
-      assigneeId: form.assigneeId || null,
-      dueDate: form.dueDate || null,
-      tags: form.tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
-    }
-
     if (isEditing && task) {
-      updateTask(task.id, payload)
+      const payload = buildPayload(task.id, task.createdAt)
+      updateTask(task.id, {
+        title: payload.title,
+        description: payload.description,
+        notes: payload.notes,
+        links: payload.links,
+        attachments: task.attachments,
+        status: payload.status,
+        priority: payload.priority,
+        assigneeId: payload.assigneeId,
+        dueDate: payload.dueDate,
+        tags: payload.tags,
+      })
+      await syncToBackend(payload)
     } else {
-      addTask(payload)
+      const now = new Date().toISOString()
+      const localPayload = {
+        title: form.title.trim(),
+        description: form.description.trim(),
+        notes: form.notes.trim(),
+        links: form.links.split(',').map((l) => l.trim()).filter(Boolean),
+        attachments: [] as Task['attachments'],
+        status: form.status,
+        priority: form.priority,
+        assigneeId: form.assigneeId || null,
+        dueDate: form.dueDate || null,
+        tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+      }
+      const newId = addTask(localPayload)
+      await syncToBackend(buildPayload(newId, now))
     }
     onClose()
   }
@@ -100,10 +132,7 @@ export function TaskModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
-      <div
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200">
           <h2 className="text-lg font-bold text-slate-900">
@@ -118,101 +147,79 @@ export function TaskModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
+          {syncError && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+              {syncError}
+            </p>
+          )}
+
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Titolo *
-            </label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Titolo *</label>
             <input
               type="text"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Es. Implementare login utenti"
               autoFocus
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Descrizione
-            </label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Descrizione</label>
             <textarea
               value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
               placeholder="Dettagli del task..."
             />
           </div>
-          <div>
-    <label className="block text-sm font-medium text-slate-700 mb-1">
-        Note
-    </label>
 
-    <textarea
-        rows={5}
-        value={form.notes}
-        onChange={(e)=>
-            setForm({
-                ...form,
-                notes:e.target.value
-            })
-        }
-        className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-        placeholder="Inserisci eventuali note..."
-    />
-</div>
+          {isEditing && task ? (
+            <>
+              <TaskNotesSection taskId={task.id} />
+              <TaskAttachmentsSection taskId={task.id} />
+            </>
+          ) : (
+            <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+              Salva il task per aggiungere note e allegati tramite API.
+            </p>
+          )}
+
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Link
-            </label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Link</label>
             <input
               type="text"
               value={form.links}
               onChange={(e) => setForm({ ...form, links: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="https://esempio.com, https://altro.com (separati da virgola)"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="https://esempio.com (separati da virgola)"
             />
           </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Stato
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Stato</label>
               <select
                 value={form.status}
-                onChange={(e) =>
-                  setForm({ ...form, status: e.target.value as TaskStatus })
-                }
+                onChange={(e) => setForm({ ...form, status: e.target.value as TaskStatus })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
+                  <option key={value} value={value}>{label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Priorità
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Priorità</label>
               <select
                 value={form.priority}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    priority: e.target.value as TaskPriority,
-                  })
-                }
+                onChange={(e) => setForm({ ...form, priority: e.target.value as TaskPriority })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
+                  <option key={value} value={value}>{label}</option>
                 ))}
               </select>
             </div>
@@ -220,59 +227,37 @@ export function TaskModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Assegnato a
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Assegnato a</label>
               <select
                 value={form.assigneeId}
-                onChange={(e) =>
-                  setForm({ ...form, assigneeId: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Non assegnato</option>
                 {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
+                  <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Scadenza
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Scadenza</label>
               <input
                 type="date"
                 value={form.dueDate}
-                onChange={(e) =>
-                  setForm({ ...form, dueDate: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Tag
-            </label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Tag</label>
             <input
               type="text"
               value={form.tags}
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="backend, urgent (separati da virgola)"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Allegati
-            </label>
-            <AttachmentUploader
-              attachments={form.attachments}
-              onChange={(attachments) => setForm({ ...form, attachments })}
             />
           </div>
 

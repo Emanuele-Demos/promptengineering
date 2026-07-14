@@ -1,6 +1,8 @@
 import type { Database } from 'sqlite'
-import type { Attachment, AttachmentRow, Task, TaskRow } from '../types'
+import type { Task, TaskRow } from '../types'
 import { getDatabase } from '../config/database'
+import { getAttachmentsByTaskId } from './attachmentService'
+import { getNotesByTaskId } from './noteService'
 
 async function getTagsForTask(taskId: string, db: Database): Promise<string[]> {
   const rows = (await db.all(
@@ -18,19 +20,12 @@ async function getLinksForTask(taskId: string, db: Database): Promise<string[]> 
   return rows.map((row) => row.link)
 }
 
-async function getAttachmentsForTask(taskId: string, db: Database): Promise<Attachment[]> {
-  const rows = (await db.all(
-    `SELECT id, taskId, fileName, path, type, size FROM attachments WHERE taskId = ? ORDER BY fileName`,
-    [taskId]
-  )) as AttachmentRow[]
-  return rows.map(({ taskId: _taskId, ...attachment }) => attachment)
-}
-
 export async function buildTaskFromRow(row: TaskRow, db: Database): Promise<Task> {
-  const [tags, links, attachments] = await Promise.all([
+  const [tags, links, attachments, noteItems] = await Promise.all([
     getTagsForTask(row.id, db),
     getLinksForTask(row.id, db),
-    getAttachmentsForTask(row.id, db),
+    getAttachmentsByTaskId(row.id, db),
+    getNotesByTaskId(row.id, db),
   ])
 
   return {
@@ -38,6 +33,7 @@ export async function buildTaskFromRow(row: TaskRow, db: Database): Promise<Task
     tags,
     links,
     attachments,
+    noteItems,
   }
 }
 
@@ -59,8 +55,7 @@ export async function getAllTasks(db?: Database): Promise<Task[]> {
   const connection = db ?? (await getDatabase())
   const rows = (await connection.all(
     `SELECT id, title, description, notes, status, priority, assigneeId, dueDate, createdAt, updatedAt
-     FROM tasks
-     ORDER BY createdAt DESC`
+     FROM tasks ORDER BY createdAt DESC`
   )) as TaskRow[]
 
   return Promise.all(rows.map((row) => buildTaskFromRow(row, connection)))
@@ -70,8 +65,7 @@ export async function getTaskById(id: string, db?: Database): Promise<Task | und
   const connection = db ?? (await getDatabase())
   const row = await connection.get<TaskRow>(
     `SELECT id, title, description, notes, status, priority, assigneeId, dueDate, createdAt, updatedAt
-     FROM tasks
-     WHERE id = ?`,
+     FROM tasks WHERE id = ?`,
     [id]
   )
 
@@ -104,16 +98,22 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
 
     await replaceTaskTags(task.id, task.tags, connection)
     await replaceTaskLinks(task.id, task.links, connection)
-
-    for (const attachment of task.attachments) {
-      await connection.run(
-        `INSERT INTO attachments (id, taskId, fileName, path, type, size) VALUES (?, ?, ?, ?, ?, ?)`,
-        [attachment.id, task.id, attachment.fileName, attachment.path, attachment.type, attachment.size]
-      )
-    }
-
     await connection.run('COMMIT')
-    return task
+    return buildTaskFromRow(
+      {
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        notes: task.notes,
+        status: task.status,
+        priority: task.priority,
+        assigneeId: task.assigneeId,
+        dueDate: task.dueDate,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+      },
+      connection
+    )
   } catch (error) {
     await connection.run('ROLLBACK')
     throw error
@@ -122,7 +122,7 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
 
 export async function updateTask(
   id: string,
-  task: Omit<Task, 'id'>,
+  task: Omit<Task, 'id' | 'noteItems' | 'attachments'>,
   db?: Database
 ): Promise<Task> {
   const connection = db ?? (await getDatabase())
@@ -149,17 +149,11 @@ export async function updateTask(
 
     await replaceTaskTags(id, task.tags, connection)
     await replaceTaskLinks(id, task.links, connection)
-
-    await connection.run(`DELETE FROM attachments WHERE taskId = ?`, [id])
-    for (const attachment of task.attachments) {
-      await connection.run(
-        `INSERT INTO attachments (id, taskId, fileName, path, type, size) VALUES (?, ?, ?, ?, ?, ?)`,
-        [attachment.id, id, attachment.fileName, attachment.path, attachment.type, attachment.size]
-      )
-    }
-
     await connection.run('COMMIT')
-    return { id, ...task }
+
+    const updated = await getTaskById(id, connection)
+    if (!updated) throw new Error('Task non trovato')
+    return updated
   } catch (error) {
     await connection.run('ROLLBACK')
     throw error
@@ -169,4 +163,13 @@ export async function updateTask(
 export async function deleteTask(id: string, db?: Database): Promise<void> {
   const connection = db ?? (await getDatabase())
   await connection.run(`DELETE FROM tasks WHERE id = ?`, [id])
+}
+
+export async function upsertTask(task: Task, db?: Database): Promise<Task> {
+  const connection = db ?? (await getDatabase())
+  const existing = await getTaskById(task.id, connection)
+  if (existing) {
+    return updateTask(task.id, task, connection)
+  }
+  return createTask(task, connection)
 }

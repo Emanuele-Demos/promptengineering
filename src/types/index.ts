@@ -8,14 +8,27 @@ export interface TeamMember {
   role: string
   color: string
 }
+
+export interface TaskNote {
+  id: string
+  taskId: string
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Attachment {
   id: string
-  taskid?: string
+  taskId?: string
   fileName: string
-  path: string
-  type: string
+  originalName: string
+  mimeType: string
   size: number
+  path: string
+  createdAt: string
+  updatedAt: string
 }
+
 export interface Task {
   id: string
   title: string

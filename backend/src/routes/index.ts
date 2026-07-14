@@ -3,6 +3,7 @@ import memberRoutes from './memberRoutes'
 import taskRoutes from './taskRoutes'
 import attachmentRoutes from './attachmentRoutes'
 import statoRoutes from './statoRoutes'
+import noteRoutes from './noteRoutes'
 
 const router = Router()
 
@@ -14,5 +15,6 @@ router.use('/members', memberRoutes)
 router.use('/tasks', taskRoutes)
 router.use('/', attachmentRoutes)
 router.use('/', statoRoutes)
+router.use('/', noteRoutes)
 
 export default router

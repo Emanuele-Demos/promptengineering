@@ -9,13 +9,24 @@ export interface TeamMember {
   color: string
 }
 
+export interface TaskNote {
+  id: string
+  taskId: string
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Attachment {
   id: string
   taskId?: string
   fileName: string
-  path: string
-  type: string
+  originalName: string
+  mimeType: string
   size: number
+  path: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface Task {
@@ -23,6 +34,7 @@ export interface Task {
   title: string
   description: string
   notes: string
+  noteItems: TaskNote[]
   links: string[]
   attachments: Attachment[]
   status: TaskStatus
@@ -56,9 +68,20 @@ interface AttachmentRow {
   id: string
   taskId: string
   fileName: string
-  path: string
-  type: string
+  originalName: string
+  mimeType: string
   size: number
+  path: string
+  createdAt: string
+  updatedAt: string
 }
 
-export type { TaskRow, AttachmentRow }
+interface TaskNoteRow {
+  id: string
+  taskId: string
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type { TaskRow, AttachmentRow, TaskNoteRow }

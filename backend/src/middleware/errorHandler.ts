@@ -9,7 +9,7 @@ export function errorHandler(
   console.error(err)
 
   if (err.code === 'LIMIT_FILE_SIZE') {
-    res.status(400).json({ message: 'File troppo grande (max 10 MB)' })
+    res.status(400).json({ message: `File troppo grande (max ${process.env.UPLOAD_MAX_MB || 10} MB)` })
     return
   }
 

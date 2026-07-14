@@ -34,7 +34,7 @@ function persist(state: AppState) {
 }
 
 interface AppContextValue extends AppState {
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => string
   updateTask: (id: string, updates: Partial<Task>) => void
   deleteTask: (id: string) => void
   moveTask: (id: string, status: TaskStatus) => void
@@ -73,13 +73,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addTask = useCallback(
     (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
       const now = new Date().toISOString()
+      const id = uuid()
       commit((prev) => ({
         ...prev,
         tasks: [
           ...prev.tasks,
-          { ...task, id: uuid(), createdAt: now, updatedAt: now },
+          { ...task, id, createdAt: now, updatedAt: now },
         ],
       }))
+      return id
     },
     [commit],
   )

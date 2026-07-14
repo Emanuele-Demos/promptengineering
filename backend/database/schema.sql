@@ -26,9 +26,21 @@ CREATE TABLE IF NOT EXISTS attachments (
     id TEXT PRIMARY KEY,
     taskId TEXT NOT NULL,
     fileName TEXT NOT NULL,
-    path TEXT NOT NULL,
-    type TEXT NOT NULL,
+    originalName TEXT NOT NULL,
+    mimeType TEXT NOT NULL,
     size INTEGER NOT NULL,
+    path TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL,
+    FOREIGN KEY (taskId) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS task_notes (
+    id TEXT PRIMARY KEY,
+    taskId TEXT NOT NULL,
+    content TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL,
     FOREIGN KEY (taskId) REFERENCES tasks(id) ON DELETE CASCADE
 );
 

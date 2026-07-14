@@ -5,13 +5,14 @@ import multer from 'multer'
 import type { NextFunction, Request, Response } from 'express'
 import * as taskService from '../services/taskService'
 import { getParam } from '../utils/params'
+import { uploadConfig } from '../config/upload.config'
 
 export const UPLOAD_ROOT = path.join(__dirname, '../../uploads/attachments')
 
 const ALLOWED_MIME = new Set([
   'image/jpeg',
+  'image/jpg',
   'image/png',
-  'image/gif',
   'image/webp',
   'application/pdf',
   'application/msword',
@@ -19,6 +20,12 @@ const ALLOWED_MIME = new Set([
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ])
+
+const ALLOWED_EXT = /\.(pdf|jpe?g|png|webp|doc|docx|xls|xlsx)$/i
+
+function isAllowedFile(file: Express.Multer.File): boolean {
+  return ALLOWED_MIME.has(file.mimetype) || ALLOWED_EXT.test(file.originalname)
+}
 
 export const uploadAttachment = multer({
   storage: multer.diskStorage({
@@ -29,14 +36,14 @@ export const uploadAttachment = multer({
       cb(null, dir)
     },
     filename: (_req, file, cb) => {
-      const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')
-      cb(null, `${randomUUID()}-${safeName}`)
+      const ext = path.extname(file.originalname)
+      const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9._-]/g, '_')
+      cb(null, `${randomUUID()}-${base}${ext}`)
     },
   }),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: uploadConfig.maxFileSize, files: 10 },
   fileFilter: (_req, file, cb) => {
-    const extAllowed = /\.(doc|docx|xls|xlsx)$/i.test(file.originalname)
-    if (ALLOWED_MIME.has(file.mimetype) || extAllowed) {
+    if (isAllowedFile(file)) {
       cb(null, true)
       return
     }

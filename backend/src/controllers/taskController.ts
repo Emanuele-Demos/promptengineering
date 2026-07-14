@@ -9,7 +9,10 @@ function normalizeStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string')
 }
 
-function buildTaskPayload(body: Record<string, unknown>, existing?: Task): Omit<Task, 'id'> {
+function buildTaskPayload(
+  body: Record<string, unknown>,
+  existing?: Task
+): Omit<Task, 'id' | 'noteItems' | 'attachments'> {
   const now = new Date().toISOString()
 
   return {
@@ -17,10 +20,6 @@ function buildTaskPayload(body: Record<string, unknown>, existing?: Task): Omit<
     description: (body.description as string) ?? existing?.description ?? '',
     notes: (body.notes as string) ?? existing?.notes ?? '',
     links: body.links !== undefined ? normalizeStringArray(body.links) : (existing?.links ?? []),
-    attachments:
-      body.attachments !== undefined
-        ? (body.attachments as Task['attachments'])
-        : (existing?.attachments ?? []),
     status: (body.status as Task['status']) ?? existing?.status ?? 'todo',
     priority: (body.priority as Task['priority']) ?? existing?.priority ?? 'medium',
     assigneeId:
@@ -52,16 +51,20 @@ export async function getTask(req: Request, res: Response): Promise<void> {
 }
 
 export async function createTask(req: Request, res: Response): Promise<void> {
-  const payload = buildTaskPayload(req.body)
+  const body = req.body as Record<string, unknown>
+  const payload = buildTaskPayload(body)
+  const now = new Date().toISOString()
   const task: Task = {
-    id: randomUUID(),
+    id: typeof body.id === 'string' && body.id ? body.id : randomUUID(),
     ...payload,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    noteItems: [],
+    attachments: [],
+    createdAt: now,
+    updatedAt: now,
   }
 
-  await taskService.createTask(task)
-  res.status(201).json(task)
+  const saved = await taskService.upsertTask(task)
+  res.status(201).json(saved)
 }
 
 export async function updateTask(req: Request, res: Response): Promise<void> {

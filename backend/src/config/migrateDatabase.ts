@@ -275,4 +275,37 @@ export async function runMigrations(db: Database): Promise<void> {
       ])
     }
   }
+
+  if (!(await columnExists(db, 'members', 'firstName'))) {
+    await db.exec(`ALTER TABLE members ADD COLUMN firstName TEXT`)
+  }
+
+  if (!(await columnExists(db, 'members', 'lastName'))) {
+    await db.exec(`ALTER TABLE members ADD COLUMN lastName TEXT`)
+  }
+
+  if (!(await columnExists(db, 'members', 'username'))) {
+    await db.exec(`ALTER TABLE members ADD COLUMN username TEXT`)
+    await db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_members_username ON members(username) WHERE username IS NOT NULL`)
+  }
+
+  if (!(await columnExists(db, 'members', 'isActive'))) {
+    await db.exec(`ALTER TABLE members ADD COLUMN isActive INTEGER NOT NULL DEFAULT 1`)
+  }
+
+  const membersWithoutNames = (await db.all(
+    `SELECT id, name FROM members WHERE firstName IS NULL OR firstName = ''`
+  )) as { id: string; name: string }[]
+
+  for (const member of membersWithoutNames) {
+    const parts = member.name.trim().split(/\s+/)
+    const firstName = parts[0] ?? member.name
+    const lastName = parts.slice(1).join(' ') || ''
+    await db.run(
+      `UPDATE members SET firstName = ?, lastName = ?, updatedAt = datetime('now') WHERE id = ?`,
+      [firstName, lastName, member.id]
+    )
+  }
+
+  await db.run(`UPDATE members SET isActive = 1 WHERE isActive IS NULL`)
 }

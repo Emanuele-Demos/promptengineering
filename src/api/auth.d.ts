@@ -12,9 +12,25 @@ export interface LoginResponse {
   expiresIn: string
 }
 
+export interface RegisterResponse {
+  success: true
+  message: string
+  user?: AuthUser
+  token?: string
+  expiresIn?: string
+}
+
 export interface MeResponse {
   user: AuthUser
 }
+
+export declare function register(params: {
+  firstName: string
+  lastName: string
+  username?: string
+  email: string
+  password: string
+}): Promise<RegisterResponse>
 
 export declare function login(params: {
   email: string

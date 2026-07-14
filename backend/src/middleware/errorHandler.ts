@@ -54,7 +54,7 @@ export function errorHandler(
   }
 
   const statusCode = (err as Error & { statusCode?: number }).statusCode
-  if (statusCode === 401 || statusCode === 404) {
+  if (statusCode === 401 || statusCode === 403 || statusCode === 404 || statusCode === 409) {
     res.status(statusCode).json({ message: err.message })
     return
   }
@@ -62,9 +62,19 @@ export function errorHandler(
   if (
     err.message.includes('Email obbligatoria') ||
     err.message.includes('Email non valida') ||
+    err.message.includes('Email già registrata') ||
+    err.message.includes('Username già in uso') ||
+    err.message.includes('Username non valido') ||
+    err.message.includes('Nome obbligatorio') ||
+    err.message.includes('Cognome obbligatorio') ||
+    err.message.includes('Nome non valido') ||
+    err.message.includes('Cognome non valido') ||
     err.message.includes('Password obbligatoria') ||
+    err.message.includes('Password non valida') ||
     err.message.includes('La password deve contenere') ||
-    err.message.includes('Dati di login non validi')
+    err.message.includes('Dati di login non validi') ||
+    err.message.includes('Dati di registrazione non validi') ||
+    err.message.includes('email istituzionale')
   ) {
     res.status(400).json({ message: err.message })
     return

@@ -1,12 +1,27 @@
 import type { Request, Response, NextFunction } from 'express'
-import { login, getAuthUserById } from '../services/authService'
+import { login, register, getAuthUserById } from '../services/authService'
 import { validateLoginInput } from '../validators/authValidator'
+import { validateRegisterInput } from '../validators/registerValidator'
 
 export async function loginHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const input = validateLoginInput(req.body)
     const result = await login(input.email, input.password, input.rememberMe)
     res.json(result)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function registerHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const input = validateRegisterInput(req.body)
+    const result = await register(input)
+    res.status(201).json(result)
   } catch (error) {
     next(error)
   }

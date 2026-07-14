@@ -3,10 +3,14 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS members (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    firstName TEXT,
+    lastName TEXT,
+    username TEXT UNIQUE,
     email TEXT NOT NULL UNIQUE,
-    role TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'User',
     color TEXT NOT NULL,
     password TEXT,
+    isActive INTEGER NOT NULL DEFAULT 1,
     createdAt TEXT NOT NULL DEFAULT (datetime('now')),
     updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
 );

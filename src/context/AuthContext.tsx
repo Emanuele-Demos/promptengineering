@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { login as loginApi, fetchCurrentUser } from '../api/auth.js'
+import { login as loginApi, register as registerApi, fetchCurrentUser } from '../api/auth.js'
 import {
   clearAuth,
   getAuthToken,
@@ -21,6 +21,13 @@ interface AuthContextValue {
   isAuthenticated: boolean
   loading: boolean
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
+  register: (input: {
+    firstName: string
+    lastName: string
+    username?: string
+    email: string
+    password: string
+  }) => Promise<{ message: string; autoLoggedIn: boolean }>
   logout: () => void
 }
 
@@ -74,6 +81,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(result.user)
   }, [])
 
+  const register = useCallback(
+    async (input: {
+      firstName: string
+      lastName: string
+      username?: string
+      email: string
+      password: string
+    }) => {
+      const result = await registerApi(input)
+
+      if (result.token && result.user) {
+        saveAuth({ token: result.token, user: result.user, rememberMe: false })
+        setUser(result.user)
+        return { message: result.message, autoLoggedIn: true }
+      }
+
+      return { message: result.message, autoLoggedIn: false }
+    },
+    [],
+  )
+
   const logout = useCallback(() => {
     clearAuth()
     setUser(null)
@@ -85,9 +113,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(user && getAuthToken()),
       loading,
       login,
+      register,
       logout,
     }),
-    [user, loading, login, logout],
+    [user, loading, login, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

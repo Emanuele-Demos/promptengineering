@@ -1,0 +1,58 @@
+export const PASSWORD_MIN_LENGTH = 8
+
+export interface PasswordRequirement {
+  id: string
+  label: string
+  test: (password: string) => boolean
+}
+
+export const PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
+  {
+    id: 'length',
+    label: `Almeno ${PASSWORD_MIN_LENGTH} caratteri`,
+    test: (p) => p.length >= PASSWORD_MIN_LENGTH,
+  },
+  {
+    id: 'uppercase',
+    label: 'Almeno una lettera maiuscola',
+    test: (p) => /[A-Z]/.test(p),
+  },
+  {
+    id: 'lowercase',
+    label: 'Almeno una lettera minuscola',
+    test: (p) => /[a-z]/.test(p),
+  },
+  {
+    id: 'number',
+    label: 'Almeno un numero',
+    test: (p) => /\d/.test(p),
+  },
+  {
+    id: 'special',
+    label: 'Almeno un carattere speciale (!@#$%^&*...)',
+    test: (p) => /[^A-Za-z0-9]/.test(p),
+  },
+]
+
+export function validatePasswordPolicy(password: string): string | null {
+  if (!password) return 'Password obbligatoria'
+  for (const req of PASSWORD_REQUIREMENTS) {
+    if (!req.test(password)) return `Password non valida: ${req.label.toLowerCase()}`
+  }
+  return null
+}
+
+export function getPasswordStrength(password: string): {
+  score: number
+  label: 'Debole' | 'Discreta' | 'Buona' | 'Forte'
+} {
+  if (!password) return { score: 0, label: 'Debole' }
+
+  const passed = PASSWORD_REQUIREMENTS.filter((r) => r.test(password)).length
+  const ratio = passed / PASSWORD_REQUIREMENTS.length
+
+  if (ratio <= 0.4) return { score: 25, label: 'Debole' }
+  if (ratio <= 0.6) return { score: 50, label: 'Discreta' }
+  if (ratio <= 0.8) return { score: 75, label: 'Buona' }
+  return { score: 100, label: 'Forte' }
+}

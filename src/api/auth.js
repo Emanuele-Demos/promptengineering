@@ -20,6 +20,21 @@ async function handleResponse(response) {
   return data
 }
 
+export async function register({ firstName, lastName, username, email, password }) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstName, lastName, username, email, password }),
+    })
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  return handleResponse(response)
+}
+
 export async function login({ email, password, rememberMe = false }) {
   let response
   try {

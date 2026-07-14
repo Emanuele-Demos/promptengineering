@@ -1,15 +1,21 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Kanban, Users, Zap } from 'lucide-react'
+import { FolderKanban, LayoutDashboard, Kanban, ListTree, Users, Zap } from 'lucide-react'
+import { NotificationCenter } from './NotificationCenter'
 
 const links = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
   { to: '/board', label: 'Board', icon: Kanban },
+  { to: '/categories', label: 'Categorie', icon: ListTree },
+  { to: '/projects', label: 'Progetti', icon: FolderKanban },
   { to: '/team', label: 'Team', icon: Users },
 ]
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
   '/board': 'Board Kanban',
+  '/categories': 'Categorie',
+  '/projects': 'Progetti',
+  '/archive': 'Archivio',
   '/team': 'Team',
 }
 
@@ -22,10 +28,11 @@ export function MobileHeader() {
       <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
         <Zap className="w-4 h-4 text-white" />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xs text-slate-500 leading-none">TeamFlow</p>
         <h1 className="text-base font-bold text-slate-900 truncate">{title}</h1>
       </div>
+      <NotificationCenter />
     </header>
   )
 }

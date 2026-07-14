@@ -1,15 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import {
-  LayoutDashboard,
-  Kanban,
-  Users,
-  Zap,
-} from 'lucide-react'
+import { FolderKanban, LayoutDashboard, Kanban, ListTree, Users, Zap } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/board', label: 'Board', icon: Kanban },
+  { to: '/categories', label: 'Categorie', icon: ListTree },
+  { to: '/projects', label: 'Progetti', icon: FolderKanban },
   { to: '/team', label: 'Team', icon: Users },
 ]
 

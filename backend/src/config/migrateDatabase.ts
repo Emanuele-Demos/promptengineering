@@ -234,4 +234,12 @@ export async function runMigrations(db: Database): Promise<void> {
   if (!(await columnExists(db, 'tasks', 'archivedAt'))) {
     await db.exec(`ALTER TABLE tasks ADD COLUMN archivedAt TEXT`)
   }
+
+  if (!(await columnExists(db, 'tasks', 'estimatedTime'))) {
+    await db.exec(`ALTER TABLE tasks ADD COLUMN estimatedTime INTEGER`)
+  }
+
+  if (!(await columnExists(db, 'tasks', 'actualTime'))) {
+    await db.exec(`ALTER TABLE tasks ADD COLUMN actualTime INTEGER`)
+  }
 }

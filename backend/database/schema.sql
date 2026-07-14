@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     favorite INTEGER NOT NULL DEFAULT 0,
     archived INTEGER NOT NULL DEFAULT 0,
     archivedAt TEXT,
+    estimatedTime INTEGER,
+    actualTime INTEGER,
     createdAt TEXT NOT NULL,
     updatedAt TEXT NOT NULL,
     FOREIGN KEY (assigneeId) REFERENCES members(id) ON DELETE SET NULL,

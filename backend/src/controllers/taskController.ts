@@ -20,6 +20,7 @@ import {
   stopTaskRecurrence,
   type StopRecurrenceMode,
 } from '../services/occurrenceService'
+import { parseEstimatedTime } from '../utils/estimatedTime'
 
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
@@ -160,6 +161,16 @@ function buildTaskPayload(
       body.favorite !== undefined
         ? (parseBooleanStrict(body.favorite) ?? existing?.favorite ?? false)
         : (existing?.favorite ?? false),
+    estimatedTime:
+      body.estimatedTime !== undefined
+        ? parseEstimatedTime(body.estimatedTime)
+        : (existing?.estimatedTime ?? null),
+    actualTime:
+      body.actualTime !== undefined
+        ? body.actualTime === null || body.actualTime === ''
+          ? null
+          : parseEstimatedTime(body.actualTime)
+        : (existing?.actualTime ?? null),
     dueDate,
     reminderDate,
     reminderType: reminderType === 'none' ? null : reminderType,
@@ -214,6 +225,12 @@ export async function getArchivedTasks(req: Request, res: Response): Promise<voi
   res.json(tasks)
 }
 
+export async function getEstimatedTimeStats(req: Request, res: Response): Promise<void> {
+  const userId = getUserId(req)
+  const stats = await taskService.getEstimatedTimeStats(userId)
+  res.json(stats)
+}
+
 export async function getTask(req: Request, res: Response): Promise<void> {
   const task = await taskService.getTaskById(getParam(req.params.id))
   if (!task) {
@@ -227,6 +244,18 @@ export async function createTask(req: Request, res: Response): Promise<void> {
   const body = req.body as Record<string, unknown>
   if (body.favorite !== undefined && parseBooleanStrict(body.favorite) === null) {
     res.status(400).json({ message: 'Il campo favorite deve essere booleano' })
+    return
+  }
+
+  try {
+    if (body.estimatedTime !== undefined) parseEstimatedTime(body.estimatedTime)
+    if (body.actualTime !== undefined && body.actualTime !== null && body.actualTime !== '') {
+      parseEstimatedTime(body.actualTime)
+    }
+  } catch (error) {
+    res.status(400).json({
+      message: error instanceof Error ? error.message : 'Tempo stimato non valido',
+    })
     return
   }
 
@@ -263,6 +292,18 @@ export async function updateTask(req: Request, res: Response): Promise<void> {
   const body = req.body as Record<string, unknown>
   if (body.favorite !== undefined && parseBooleanStrict(body.favorite) === null) {
     res.status(400).json({ message: 'Il campo favorite deve essere booleano' })
+    return
+  }
+
+  try {
+    if (body.estimatedTime !== undefined) parseEstimatedTime(body.estimatedTime)
+    if (body.actualTime !== undefined && body.actualTime !== null && body.actualTime !== '') {
+      parseEstimatedTime(body.actualTime)
+    }
+  } catch (error) {
+    res.status(400).json({
+      message: error instanceof Error ? error.message : 'Tempo stimato non valido',
+    })
     return
   }
 

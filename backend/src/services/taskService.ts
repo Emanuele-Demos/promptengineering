@@ -7,12 +7,13 @@ import { categoryExists, getCategoryById } from './categoryService'
 import { projectExists } from './projectService'
 import type { ReminderType } from '../utils/reminderValidation'
 import { parseRepeatDays, serializeRepeatDays } from '../utils/recurrenceValidation'
+import { formatEstimatedTimeLong } from '../utils/estimatedTime'
 
 const TASK_SELECT = `id, title, description, notes, status, priority, assigneeId, categoryId, projectId,
   dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
   isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
   repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
-  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt`
+  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt, estimatedTime, actualTime`
 
 export type TaskArchivedFilter = 'exclude' | 'only' | 'all'
 
@@ -74,6 +75,8 @@ export async function buildTaskFromRow(row: TaskRow, db: Database): Promise<Task
     favorite: Boolean(fav),
     archived: Boolean(arch),
     archivedAt: row.archivedAt ?? null,
+    estimatedTime: row.estimatedTime ?? null,
+    actualTime: row.actualTime ?? null,
     reminderType: (row.reminderType as ReminderType | null) ?? null,
     ...mapRecurrenceToTask(row),
     tags,
@@ -203,8 +206,8 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
         isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
         repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
-        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt, estimatedTime, actualTime
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         task.id,
         task.title,
@@ -225,6 +228,8 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         task.favorite ? 1 : 0,
         task.archived ? 1 : 0,
         task.archivedAt ?? null,
+        task.estimatedTime ?? null,
+        task.actualTime ?? null,
       ]
     )
 
@@ -266,6 +271,8 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         favorite: task.favorite ? 1 : 0,
         archived: task.archived ? 1 : 0,
         archivedAt: task.archivedAt ?? null,
+        estimatedTime: task.estimatedTime ?? null,
+        actualTime: task.actualTime ?? null,
       },
       connection
     )
@@ -310,7 +317,7 @@ export async function updateTask(
         repeatEndType = ?, repeatEnd = ?, repeatOccurrences = ?,
         occurrencesGenerated = ?, lastGeneratedAt = ?, nextOccurrence = ?, parentTaskId = ?,
         repeatDays = ?, maxOccurrences = ?, currentOccurrences = ?, isRecurringActive = ?,
-        favorite = ?, archived = ?, archivedAt = ?
+        favorite = ?, archived = ?, archivedAt = ?, estimatedTime = ?, actualTime = ?
        WHERE id = ?`,
       [
         task.title,
@@ -330,6 +337,8 @@ export async function updateTask(
         task.favorite ? 1 : 0,
         task.archived ? 1 : 0,
         task.archivedAt ?? null,
+        task.estimatedTime ?? null,
+        task.actualTime ?? null,
         id,
       ]
     )
@@ -397,4 +406,31 @@ export async function upsertTask(
     return updateTask(task.id, task, options, connection)
   }
   return createTask(task, connection)
+}
+
+export async function getEstimatedTimeStats(
+  assigneeId: string,
+  db?: Database
+): Promise<{ totalEstimatedMinutes: number; openTasks: number; formatted: string }> {
+  const connection = db ?? (await getDatabase())
+  const row = await connection.get<{ total: number | null; openTasks: number }>(
+    `SELECT
+       COALESCE(SUM(estimatedTime), 0) AS total,
+       COUNT(*) AS openTasks
+     FROM tasks
+     WHERE assigneeId = ?
+       AND status != 'done'
+       AND (archived = 0 OR archived IS NULL)
+       AND estimatedTime IS NOT NULL`,
+    [assigneeId]
+  )
+
+  const totalEstimatedMinutes = row?.total ?? 0
+  const openTasks = row?.openTasks ?? 0
+
+  return {
+    totalEstimatedMinutes,
+    openTasks,
+    formatted: formatEstimatedTimeLong(totalEstimatedMinutes),
+  }
 }

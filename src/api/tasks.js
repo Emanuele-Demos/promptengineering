@@ -101,6 +101,12 @@ export async function getFavoriteTasks() {
   })
 }
 
+export async function getEstimatedTimeStats() {
+  return apiFetch(`${API_BASE_URL}/tasks/estimated-time`, {
+    headers: authHeaders(),
+  })
+}
+
 export async function getArchivedTasks() {
   return apiFetch(`${API_BASE_URL}/tasks/archived`, {
     headers: authHeaders(),

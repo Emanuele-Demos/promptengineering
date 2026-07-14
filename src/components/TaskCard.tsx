@@ -1,4 +1,5 @@
-import { Calendar, GripVertical, Paperclip, Repeat, Star, Archive } from 'lucide-react'
+import { Calendar, GripVertical, Paperclip, Repeat, Star, Archive, Timer } from 'lucide-react'
+import { formatEstimatedTimeShort } from '../utils/estimatedTime'
 import type { Task, Category } from '../types'
 import { useApp } from '../store/AppContext'
 import { formatDate, isOverdue } from '../utils/helpers'
@@ -96,6 +97,15 @@ export function TaskCard({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <PriorityBadge priority={task.priority} />
+              {task.estimatedTime != null && task.estimatedTime > 0 && (
+                <span
+                  className="flex items-center gap-0.5 text-[11px] text-slate-500"
+                  title="Tempo stimato"
+                >
+                  <Timer className="w-3 h-3" />
+                  {formatEstimatedTimeShort(task.estimatedTime)}
+                </span>
+              )}
               {task.attachments && task.attachments.length > 0 && (
                 <span
                   className="flex items-center gap-0.5 text-xs text-slate-400"

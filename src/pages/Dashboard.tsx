@@ -6,6 +6,7 @@ import {
   TrendingUp,
   ArrowRight,
   RefreshCw,
+  Timer,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../store/AppContext'
@@ -115,6 +116,13 @@ export function Dashboard() {
           delta: null,
         },
         {
+          label: 'Tempo totale stimato',
+          value: stats.totalEstimatedFormatted,
+          icon: Timer,
+          color: 'text-violet-600 bg-violet-50',
+          delta: null,
+        },
+        {
           label: 'Tempo medio di completamento',
           value: statistics.averageCompletionTime,
           icon: Clock,
@@ -189,7 +197,7 @@ export function Dashboard() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {loading && !statistics
-          ? Array.from({ length: 6 }).map((_, i) => (
+          ? Array.from({ length: 7 }).map((_, i) => (
               <div
                 key={i}
                 className="bg-white rounded-xl border border-slate-200 p-4 h-28 animate-pulse"
@@ -216,7 +224,7 @@ export function Dashboard() {
                   )}
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{value}</p>
+                  <p className={`font-bold text-slate-900 ${typeof value === 'string' && value.includes(' ') ? 'text-base leading-snug' : 'text-2xl'}`}>{value}</p>
                   <p className="text-xs text-slate-400 mt-1 font-medium uppercase tracking-wider leading-tight">
                     {label}
                   </p>

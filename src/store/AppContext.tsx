@@ -16,6 +16,7 @@ import type {
   TeamMember,
 } from '../types'
 import { MEMBER_COLORS } from '../types'
+import { formatEstimatedTimeLong } from '../utils/estimatedTime'
 import { syncTaskStatus, syncTaskFavorite, archiveTaskApi, restoreTaskApi, deleteTaskPermanent } from '../api/tasks.js'
 
 const STORAGE_KEY = 'teamflow-data'
@@ -60,6 +61,9 @@ interface AppContextValue extends AppState {
     completedLate: number
     inReview: number
     todo: number
+    totalEstimatedMinutes: number
+    totalEstimatedFormatted: string
+    openTasksWithEstimate: number
   }
 }
 
@@ -292,25 +296,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [activeTasks])
 
   const stats = useMemo(
-    () => ({
-      total: activeTasks.length,
-      done: activeTasks.filter((t) => t.status === 'done').length,
-      inProgress: activeTasks.filter((t) => t.status === 'in_progress').length,
-      overdue: overdueTasks.length,
-      completedOnTime: activeTasks.filter(
-        (t) =>
-          t.status === 'done' &&
-          (!t.dueDate || t.updatedAt.slice(0, 10) <= t.dueDate),
-      ).length,
-      completedLate: activeTasks.filter(
-        (t) =>
-          t.status === 'done' &&
-          !!t.dueDate &&
-          t.updatedAt.slice(0, 10) > t.dueDate,
-      ).length,
-      inReview: activeTasks.filter((t) => t.status === 'review').length,
-      todo: activeTasks.filter((t) => t.status === 'todo').length,
-    }),
+    () => {
+      const openTasks = activeTasks.filter((t) => t.status !== 'done')
+      const totalEstimatedMinutes = openTasks.reduce(
+        (sum, t) => sum + (t.estimatedTime ?? 0),
+        0,
+      )
+
+      return {
+        total: activeTasks.length,
+        done: activeTasks.filter((t) => t.status === 'done').length,
+        inProgress: activeTasks.filter((t) => t.status === 'in_progress').length,
+        overdue: overdueTasks.length,
+        completedOnTime: activeTasks.filter(
+          (t) =>
+            t.status === 'done' &&
+            (!t.dueDate || t.updatedAt.slice(0, 10) <= t.dueDate),
+        ).length,
+        completedLate: activeTasks.filter(
+          (t) =>
+            t.status === 'done' &&
+            !!t.dueDate &&
+            t.updatedAt.slice(0, 10) > t.dueDate,
+        ).length,
+        inReview: activeTasks.filter((t) => t.status === 'review').length,
+        todo: activeTasks.filter((t) => t.status === 'todo').length,
+        totalEstimatedMinutes,
+        totalEstimatedFormatted: formatEstimatedTimeLong(totalEstimatedMinutes),
+        openTasksWithEstimate: openTasks.filter((t) => (t.estimatedTime ?? 0) > 0).length,
+      }
+    },
     [activeTasks, overdueTasks],
   )
 

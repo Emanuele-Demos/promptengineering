@@ -41,5 +41,16 @@ export function validateTaskBody(
     return
   }
 
+  const { estimatedTime } = req.body
+  if (
+    estimatedTime !== undefined &&
+    estimatedTime !== null &&
+    estimatedTime !== '' &&
+    (typeof estimatedTime !== 'number' || !Number.isInteger(estimatedTime) || estimatedTime <= 0)
+  ) {
+    res.status(400).json({ message: 'Il tempo stimato deve essere un intero positivo (minuti)' })
+    return
+  }
+
   next()
 }

@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Plus, Search } from 'lucide-react'
-import type { Task, TaskStatus } from '../types'
+import { useMemo, useState } from 'react'
+import { Plus, Search, Timer } from 'lucide-react'
+import type { Task, TaskPriority, TaskStatus } from '../types'
 import { useApp } from '../store/AppContext'
 import { useCategories } from '../hooks/useCategories'
 import { KanbanColumn } from '../components/KanbanColumn'
@@ -8,8 +8,52 @@ import { TaskModal } from '../components/TaskModal'
 
 const COLUMNS: TaskStatus[] = ['todo', 'in_progress', 'review', 'done']
 
+type SortField = 'default' | 'priority' | 'dueDate' | 'estimatedTime'
+type SortDir = 'asc' | 'desc'
+
+const PRIORITY_ORDER: Record<TaskPriority, number> = {
+  urgent: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+}
+
+function sortTasks(tasks: Task[], sortBy: SortField, sortDir: SortDir, favoritesFirst: boolean) {
+  const dir = sortDir === 'asc' ? 1 : -1
+
+  return [...tasks].sort((a, b) => {
+    if (sortBy === 'default' && favoritesFirst) {
+      if (Boolean(a.favorite) !== Boolean(b.favorite)) {
+        return a.favorite ? -1 : 1
+      }
+      return 0
+    }
+
+    if (sortBy === 'priority') {
+      const diff =
+        (PRIORITY_ORDER[a.priority] ?? 0) - (PRIORITY_ORDER[b.priority] ?? 0)
+      return dir * diff
+    }
+
+    if (sortBy === 'dueDate') {
+      const ad = a.dueDate ?? (sortDir === 'asc' ? '9999-12-31' : '')
+      const bd = b.dueDate ?? (sortDir === 'asc' ? '9999-12-31' : '')
+      return dir * ad.localeCompare(bd)
+    }
+
+    if (sortBy === 'estimatedTime') {
+      const missing = sortDir === 'asc' ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER
+      const ae = a.estimatedTime ?? missing
+      const be = b.estimatedTime ?? missing
+      return dir * (ae - be)
+    }
+
+    return 0
+  })
+}
+
 export function Board() {
-  const { tasks, moveTask, archiveTask } = useApp()
+  const { tasks, moveTask, archiveTask, stats } = useApp()
   const { categories, loading: categoriesLoading, getCategoryById } = useCategories()
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -17,31 +61,36 @@ export function Board() {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [favoriteFilter, setFavoriteFilter] = useState<'all' | 'favorites'>('all')
+  const [sortBy, setSortBy] = useState<SortField>('default')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [success, setSuccess] = useState('')
 
   const activeTasks = tasks.filter((t) => !t.archived)
 
-  const filteredTasks = activeTasks
-    .filter((t) => {
-      const matchesSearch =
-        t.title.toLowerCase().includes(search.toLowerCase()) ||
-        t.description.toLowerCase().includes(search.toLowerCase()) ||
-        t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
+  const filteredTasks = useMemo(
+    () =>
+      sortTasks(
+        activeTasks.filter((t) => {
+          const matchesSearch =
+            t.title.toLowerCase().includes(search.toLowerCase()) ||
+            t.description.toLowerCase().includes(search.toLowerCase()) ||
+            t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
 
-      const matchesCategory =
-        !categoryFilter || (t.categoryId ?? null) === categoryFilter
+          const matchesCategory =
+            !categoryFilter || (t.categoryId ?? null) === categoryFilter
 
-      const matchesFavorite =
-        favoriteFilter === 'favorites' ? Boolean(t.favorite) : true
+          const matchesFavorite =
+            favoriteFilter === 'favorites' ? Boolean(t.favorite) : true
 
-      return matchesSearch && matchesCategory && matchesFavorite
-    })
-    .sort((a, b) => {
-      if (favoriteFilter === 'favorites') return 0
-      if (Boolean(a.favorite) === Boolean(b.favorite)) return 0
-      return a.favorite ? -1 : 1
-    })
+          return matchesSearch && matchesCategory && matchesFavorite
+        }),
+        sortBy,
+        sortDir,
+        favoriteFilter === 'all' && sortBy === 'default',
+      ),
+    [activeTasks, search, categoryFilter, favoriteFilter, sortBy, sortDir],
+  )
 
   const openCreate = (status: TaskStatus) => {
     setSelectedTask(null)
@@ -80,6 +129,37 @@ export function Board() {
           <p className="text-sm sm:text-base text-slate-500 mt-1">
             Trascina i task tra le colonne per aggiornare lo stato
           </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-800 rounded-lg border border-indigo-100">
+            <Timer className="w-4 h-4 shrink-0" />
+            <span>
+              Tempo totale stimato:{' '}
+              <strong>{stats.totalEstimatedFormatted}</strong>
+            </span>
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortField)}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            aria-label="Ordina per"
+          >
+            <option value="default">Ordina: predefinito</option>
+            <option value="priority">Ordina: priorità</option>
+            <option value="dueDate">Ordina: scadenza</option>
+            <option value="estimatedTime">Ordina: tempo stimato</option>
+          </select>
+          {sortBy !== 'default' && (
+            <select
+              value={sortDir}
+              onChange={(e) => setSortDir(e.target.value as SortDir)}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label="Direzione ordinamento"
+            >
+              <option value="asc">Crescente</option>
+              <option value="desc">Decrescente</option>
+            </select>
+          )}
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <div className="relative flex-1 min-w-0">

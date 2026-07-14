@@ -17,7 +17,7 @@ const RECURRING_SELECT = `id, title, description, notes, status, priority, assig
   dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
   isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
   repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
-  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt`
+  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt, estimatedTime, actualTime`
 
 function mapRecurrenceFromRow(row: TaskRow): RecurrenceFields {
   const current = row.currentOccurrences ?? row.occurrencesGenerated ?? 1
@@ -122,8 +122,8 @@ async function generateNextInstance(source: TaskRow, db: Database): Promise<bool
         dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
         isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
         repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
-        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite, archived, archivedAt, estimatedTime, actualTime
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newId,
         source.title,
@@ -157,6 +157,8 @@ async function generateNextInstance(source: TaskRow, db: Database): Promise<bool
         newRecurrence.isRecurringActive ? 1 : 0,
         source.favorite ? 1 : 0,
         0,
+        null,
+        source.estimatedTime ?? null,
         null,
       ]
     )

@@ -15,6 +15,13 @@ import {
 import {
   validateRecurrenceClient,
 } from '../utils/recurrence'
+import {
+  minutesToFormFields,
+  parseEstimatedTimeForm,
+  validateEstimatedTimeForm,
+} from '../utils/estimatedTime'
+import type { EstimatedTimeUnit } from '../utils/estimatedTime'
+import { EstimatedTimeField } from './EstimatedTimeField'
 import { TaskNotesSection } from './TaskNotesSection'
 import { TaskAttachmentsSection } from './TaskAttachmentsSection'
 import { TaskRecurrencePanel } from './TaskRecurrencePanel'
@@ -50,6 +57,8 @@ const emptyForm = {
   repeatEnd: '',
   repeatOccurrences: 10,
   maxOccurrences: null as number | null,
+  estimatedTimeValue: '',
+  estimatedTimeUnit: 'hours' as EstimatedTimeUnit,
 }
 
 function defaultRepeatDaysFromDueDate(dueDate: string): RepeatDay[] {
@@ -73,6 +82,7 @@ export function TaskModal({
   const [syncError, setSyncError] = useState('')
   const [reminderError, setReminderError] = useState('')
   const [recurrenceError, setRecurrenceError] = useState('')
+  const [estimatedTimeError, setEstimatedTimeError] = useState('')
   const [reminderSaved, setReminderSaved] = useState('')
 
   useEffect(() => {
@@ -104,6 +114,8 @@ export function TaskModal({
         repeatEnd: task.repeatEnd ?? '',
         repeatOccurrences: task.repeatOccurrences ?? 10,
         maxOccurrences: task.maxOccurrences ?? null,
+        estimatedTimeValue: minutesToFormFields(task.estimatedTime).value,
+        estimatedTimeUnit: minutesToFormFields(task.estimatedTime).unit,
       })
     } else {
       setForm({ ...emptyForm, status: defaultStatus })
@@ -111,6 +123,7 @@ export function TaskModal({
     setSyncError('')
     setReminderError('')
     setRecurrenceError('')
+    setEstimatedTimeError('')
     setReminderSaved('')
   }, [task, defaultStatus, open])
 
@@ -155,6 +168,8 @@ export function TaskModal({
       lastGeneratedAt: task?.lastGeneratedAt ?? null,
       nextOccurrence: task?.nextOccurrence ?? null,
       parentTaskId: task?.parentTaskId ?? null,
+      estimatedTime: parseEstimatedTimeForm(form.estimatedTimeValue, form.estimatedTimeUnit),
+      actualTime: task?.actualTime ?? null,
       createdAt,
       updatedAt: new Date().toISOString(),
     }
@@ -200,6 +215,13 @@ export function TaskModal({
       return
     }
 
+    const timeMsg = validateEstimatedTimeForm(form.estimatedTimeValue, form.estimatedTimeUnit)
+    if (timeMsg) {
+      setEstimatedTimeError(timeMsg)
+      return
+    }
+    setEstimatedTimeError('')
+
     if (form.assigneeId) {
       setCurrentUserId(form.assigneeId)
     }
@@ -234,6 +256,8 @@ export function TaskModal({
         occurrencesGenerated: payload.occurrencesGenerated,
         currentOccurrences: payload.currentOccurrences,
         nextOccurrence: payload.nextOccurrence,
+        estimatedTime: payload.estimatedTime,
+        actualTime: payload.actualTime,
       })
       await syncToBackend(payload)
       setReminderSaved(
@@ -274,6 +298,8 @@ export function TaskModal({
         maxOccurrences: form.isRecurring ? form.maxOccurrences : null,
         occurrencesGenerated: form.isRecurring ? 1 : 0,
         currentOccurrences: form.isRecurring ? 1 : 0,
+        estimatedTime: parseEstimatedTimeForm(form.estimatedTimeValue, form.estimatedTimeUnit),
+        actualTime: null,
       }
       const newId = addTask(localPayload)
       await syncToBackend(buildPayload(newId, now))
@@ -415,6 +441,19 @@ export function TaskModal({
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
+
+          <EstimatedTimeField
+            value={form.estimatedTimeValue}
+            unit={form.estimatedTimeUnit}
+            error={estimatedTimeError || undefined}
+            onChange={(patch) =>
+              setForm({
+                ...form,
+                estimatedTimeValue: patch.value ?? form.estimatedTimeValue,
+                estimatedTimeUnit: patch.unit ?? form.estimatedTimeUnit,
+              })
+            }
+          />
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Promemoria</label>

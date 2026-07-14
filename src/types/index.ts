@@ -188,6 +188,8 @@ export interface Task {
   favorite?: boolean
   archived?: boolean
   archivedAt?: string | null
+  estimatedTime?: number | null
+  actualTime?: number | null
   tags: string[]
   createdAt: string
   updatedAt: string

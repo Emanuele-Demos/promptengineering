@@ -29,6 +29,26 @@ export interface Category {
   color: string
 }
 
+export type GoalType = 'daily' | 'weekly'
+
+export interface Goal {
+  id: string
+  userId: string
+  type: GoalType
+  target: number
+  createdAt: string
+}
+
+export interface AppNotification {
+  id: string
+  taskId: string
+  title: string
+  message: string
+  scheduledAt: string
+  read: boolean
+  createdAt: string
+}
+
 export interface Task {
   id: string
   title: string
@@ -43,6 +63,8 @@ export interface Task {
   categoryId?: string | null
   dueDate: string | null
   tags: string[]
+  reminderAt?: string | null
+  order?: number
   createdAt: string
   updatedAt: string
 }
@@ -52,6 +74,8 @@ export interface AppState {
   folders: Folder[]
   categories: Category[]
   tasks: Task[]
+  goals: Goal[]
+  notifications: AppNotification[]
 }
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {

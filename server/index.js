@@ -5,6 +5,7 @@ import { getMembers, createMember, updateMember, deleteMember } from './controll
 import { getFolders, createFolder, updateFolder, deleteFolder } from './controllers/foldersController.js';
 import { getCategories, createCategory, updateCategory, deleteCategory } from './controllers/categoriesController.js';
 import { getTasks, createTask, updateTask, deleteTask } from './controllers/tasksController.js';
+import { getGoals, createGoal } from './controllers/goalsController.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -45,6 +46,10 @@ app.get('/api/tasks', getTasks);
 app.post('/api/tasks', createTask);
 app.put('/api/tasks/:id', updateTask);
 app.delete('/api/tasks/:id', deleteTask);
+
+// Goal
+app.get('/api/goals', getGoals);
+app.post('/api/goals', createGoal);
 
 app.listen(PORT, () => {
   console.log(`Server Express (strutturato) in esecuzione sulla porta ${PORT}`);

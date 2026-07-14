@@ -1,4 +1,4 @@
-import { Calendar, GripVertical, Paperclip } from 'lucide-react'
+import { BellRing, Calendar, GripVertical, Paperclip } from 'lucide-react'
 import type { Task } from '../types'
 import { useApp } from '../store/AppContext'
 import { formatDate, isOverdue } from '../utils/helpers'
@@ -70,6 +70,12 @@ export function TaskCard({
                 >
                   <Paperclip className="w-3.5 h-3.5" />
                   {task.attachments.length}
+                </span>
+              )}
+              {task.reminderAt && (
+                <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                  <BellRing className="w-3 h-3" />
+                  Reminder
                 </span>
               )}
             </div>

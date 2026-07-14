@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { v4 as uuid } from 'uuid'
 import type {
+  AppNotification,
   AppState,
   Task,
   TaskPriority,
@@ -16,10 +17,15 @@ import type {
   TeamMember,
   Folder,
   Category,
+  Goal,
 } from '../types'
 import { MEMBER_COLORS } from '../types'
 
 const API_BASE = 'http://localhost:3001/api'
+const STORAGE_KEYS = {
+  notifications: 'teamflow-notifications',
+  reminders: 'teamflow-task-reminders',
+}
 
 interface AppContextValue extends AppState {
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void
@@ -35,6 +41,10 @@ interface AppContextValue extends AppState {
   addCategory: (category: Omit<Category, 'id'>) => void
   updateCategory: (id: string, updates: Partial<Category>) => void
   deleteCategory: (id: string) => void
+  createGoal: (goal: Omit<Goal, 'id' | 'createdAt'>) => void
+  markNotificationRead: (id: string) => void
+  deleteNotification: (id: string) => void
+  clearNotifications: () => void
   resetData: () => void
   getMember: (id: string | null) => TeamMember | undefined
   tasksByStatus: (status: TaskStatus) => Task[]
@@ -54,28 +64,101 @@ interface AppContextValue extends AppState {
 
 const AppContext = createContext<AppContextValue | null>(null)
 
+function readStoredNotifications(): AppNotification[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEYS.notifications)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function readStoredReminders(): Record<string, string | null> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEYS.reminders)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function buildNotification(task: Task): AppNotification {
+  const reminderTarget = task.reminderAt || task.dueDate
+  const message = reminderTarget
+    ? `Promemoria attivo per ${task.title}`
+    : `Nuovo task pronto per il follow-up`
+
+  return {
+    id: uuid(),
+    taskId: task.id,
+    title: task.title,
+    message,
+    scheduledAt: reminderTarget ?? new Date().toISOString(),
+    read: false,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+function persistReminders(tasks: Task[]) {
+  if (typeof window === 'undefined') return
+  const reminderMap = Object.fromEntries(
+    tasks.filter((task) => task.reminderAt).map((task) => [task.id, task.reminderAt]),
+  )
+  window.localStorage.setItem(STORAGE_KEYS.reminders, JSON.stringify(reminderMap))
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>({ tasks: [], members: [], folders: [], categories: [] })
+  const [state, setState] = useState<AppState>(() => ({
+    tasks: [],
+    members: [],
+    folders: [],
+    categories: [],
+    goals: [],
+    notifications: readStoredNotifications(),
+  }))
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const [resTasks, resMembers, resFolders, resCategories] = await Promise.all([
+        const [resTasks, resMembers, resFolders, resCategories, resGoals] = await Promise.all([
           fetch(`${API_BASE}/tasks`).then((r) => r.json()),
           fetch(`${API_BASE}/members`).then((r) => r.json()),
           fetch(`${API_BASE}/folders`).then((r) => r.json()),
           fetch(`${API_BASE}/categories`).then((r) => r.json()),
+          fetch(`${API_BASE}/goals`).then((r) => r.json()),
         ])
 
+        const storedReminders = readStoredReminders()
         const normalizedTasks = (resTasks as Task[]).map((task) => ({
           ...task,
           notes: task.notes ?? '',
           links: task.links ?? [],
           attachments: task.attachments ?? [],
+          reminderAt: storedReminders[task.id] ?? task.reminderAt ?? null,
+          order: task.order ?? 0,
         }))
 
-        setState({ tasks: normalizedTasks, members: resMembers, folders: resFolders, categories: resCategories })
+        const existingNotifications = readStoredNotifications()
+        const notificationsWithTask = normalizedTasks.reduce<AppNotification[]>((acc, task) => {
+          const alreadyExists = existingNotifications.some((notification) => notification.taskId === task.id)
+          if (task.reminderAt && !alreadyExists) {
+            acc.push(buildNotification(task))
+          }
+          return acc
+        }, [...existingNotifications])
+
+        setState((prev) => ({
+          ...prev,
+          tasks: normalizedTasks,
+          members: resMembers,
+          folders: resFolders,
+          categories: resCategories,
+          goals: resGoals,
+          notifications: notificationsWithTask,
+        }))
       } catch (err) {
         console.error('Errore nel caricamento dei dati dal server:', err)
       } finally {
@@ -85,13 +168,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     load()
   }, [])
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || loading) return
+    window.localStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(state.notifications))
+    persistReminders(state.tasks)
+  }, [loading, state.notifications, state.tasks])
+
   const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString()
     const newTask: Task = {
-      notes: '',
-      links: [],
-      attachments: [],
       ...task,
+      notes: task.notes ?? '',
+      links: task.links ?? [],
+      attachments: task.attachments ?? [],
+      reminderAt: task.reminderAt ?? null,
+      order: task.order ?? 0,
       id: uuid(),
       createdAt: now,
       updatedAt: now,
@@ -100,6 +191,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({
       ...prev,
       tasks: [...prev.tasks, newTask],
+      notifications: newTask.reminderAt
+        ? [...prev.notifications, buildNotification(newTask)]
+        : prev.notifications,
     }))
 
     fetch(`${API_BASE}/tasks`, {
@@ -113,10 +207,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const now = new Date().toISOString()
     const taskUpdates = { ...updates, updatedAt: now }
 
-    setState((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => (t.id === id ? { ...t, ...taskUpdates } : t)),
-    }))
+    setState((prev) => {
+      const existingTask = prev.tasks.find((t) => t.id === id)
+      const nextReminderAt = updates.reminderAt ?? existingTask?.reminderAt ?? null
+
+      const notifications = nextReminderAt
+        ? prev.notifications.some((notification) => notification.taskId === id)
+          ? prev.notifications
+          : [...prev.notifications, buildNotification({ ...(existingTask ?? ({} as Task)), ...taskUpdates, reminderAt: nextReminderAt, id })]
+        : prev.notifications.filter((notification) => notification.taskId !== id)
+
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) => (t.id === id ? { ...t, ...taskUpdates, reminderAt: nextReminderAt } : t)),
+        notifications,
+      }
+    })
 
     fetch(`${API_BASE}/tasks/${id}`, {
       method: 'PUT',
@@ -129,6 +235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({
       ...prev,
       tasks: prev.tasks.filter((t) => t.id !== id),
+      notifications: prev.notifications.filter((notification) => notification.taskId !== id),
     }))
 
     fetch(`${API_BASE}/tasks/${id}`, {
@@ -269,16 +376,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }).catch((err) => console.error("Errore durante l'eliminazione della categoria:", err))
   }, [])
 
+  const createGoal = useCallback((goal: Omit<Goal, 'id' | 'createdAt'>) => {
+    const now = new Date().toISOString()
+    const newGoal: Goal = {
+      ...goal,
+      id: uuid(),
+      createdAt: now,
+    }
+
+    setState((prev) => ({
+      ...prev,
+      goals: [newGoal, ...prev.goals],
+    }))
+
+    fetch(`${API_BASE}/goals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newGoal),
+    }).catch((err) => console.error('Errore durante la creazione dell\'obiettivo:', err))
+  }, [])
+
+  const markNotificationRead = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      notifications: prev.notifications.map((item) => (item.id === id ? { ...item, read: true } : item)),
+    }))
+  }, [])
+
+  const deleteNotification = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      notifications: prev.notifications.filter((item) => item.id !== id),
+    }))
+  }, [])
+
+  const clearNotifications = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      notifications: [],
+    }))
+  }, [])
+
   const resetData = useCallback(async () => {
     try {
       await fetch(`${API_BASE}/reset`, { method: 'POST' })
-      const [resTasks, resMembers, resFolders, resCategories] = await Promise.all([
+      const [resTasks, resMembers, resFolders, resCategories, resGoals] = await Promise.all([
         fetch(`${API_BASE}/tasks`).then((r) => r.json()),
         fetch(`${API_BASE}/members`).then((r) => r.json()),
         fetch(`${API_BASE}/folders`).then((r) => r.json()),
         fetch(`${API_BASE}/categories`).then((r) => r.json()),
+        fetch(`${API_BASE}/goals`).then((r) => r.json()),
       ])
-      setState({ tasks: resTasks, members: resMembers, folders: resFolders, categories: resCategories })
+      setState({ tasks: resTasks, members: resMembers, folders: resFolders, categories: resCategories, goals: resGoals, notifications: [] })
     } catch (err) {
       console.error('Errore durante il reset dei dati:', err)
     }
@@ -333,6 +482,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addCategory,
       updateCategory,
       deleteCategory,
+      createGoal,
+      markNotificationRead,
+      deleteNotification,
+      clearNotifications,
       resetData,
       getMember,
       tasksByStatus,
@@ -355,6 +508,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addCategory,
       updateCategory,
       deleteCategory,
+      createGoal,
+      markNotificationRead,
+      deleteNotification,
+      clearNotifications,
       resetData,
       getMember,
       tasksByStatus,

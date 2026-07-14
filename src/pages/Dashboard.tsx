@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import {
   CheckCircle2,
   Clock,
   AlertTriangle,
   TrendingUp,
   ArrowRight,
+  Target,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../store/AppContext'
@@ -21,7 +22,7 @@ import {
 
 // Palette colori coordinata per i grafici
 const COLORI_CATEGORIE = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6']
-const MAPPATURA_COLORI_PRIORITA = {
+const MAPPATURA_COLORI_PRIORITA: Record<string, string> = {
   'Urgente': '#ef4444',
   'Alta': '#f97316',
   'Media': '#eab308',
@@ -33,7 +34,10 @@ const MAPPATURA_COLORI_PRIORITA = {
 }
 
 export function Dashboard() {
-  const { tasks, members, stats, overdueTasks, getMember } = useApp()
+  const { tasks, members, stats, overdueTasks, getMember, categories, goals, createGoal } = useApp()
+  const [goalType, setGoalType] = useState<'daily' | 'weekly'>('daily')
+  const [goalTarget, setGoalTarget] = useState('8')
+  const [goalFeedback, setGoalFeedback] = useState('')
 
   // --- LOGICA DI CALCOLO DINAMICA DEI 6 INDICATORI RICHIESTI ---
   const metricheElementi = useMemo(() => {
@@ -62,7 +66,7 @@ export function Dashboard() {
     let tempoMedioStr = "1.5 giorni" // Fallback predefinito se non ci sono dati storici
     if (taskFatti.length > 0) {
       const totaleOre = taskFatti.reduce((acc, t) => {
-        const diffMs = new Date(t.updatedAt) - new Date(t.createdAt)
+        const diffMs = new Date(t.updatedAt).getTime() - new Date(t.createdAt).getTime()
         return acc + Math.max(0, diffMs / (1000 * 60 * 60))
       }, 0)
       const mediaOre = totaleOre / taskFatti.length
@@ -103,28 +107,28 @@ export function Dashboard() {
     })
 
     // Grafico 3: Task per Categoria (Estrae i tag o le categorie dai tuoi task)
-    const mappaCategorie = {}
-    tasks.forEach(t => {
-      const cat = t.category || (t.tags && t.tags[0]) || 'Generale'
-      const catFormattata = cat.charAt(0).toUpperCase() + cat.slice(1)
+    const mappaCategorie: Record<string, number> = {}
+    tasks.forEach((t) => {
+      const categoryName = categories.find((item) => item.id === t.categoryId)?.name ?? 'Generale'
+      const catFormattata = categoryName.charAt(0).toUpperCase() + categoryName.slice(1)
       mappaCategorie[catFormattata] = (mappaCategorie[catFormattata] || 0) + 1
     })
-    const taskPerCategoria = Object.keys(mappaCategorie).map(name => ({ name, value: mappaCategorie[name] }))
+    const taskPerCategoria = Object.keys(mappaCategorie).map((name) => ({ name, value: mappaCategorie[name] }))
 
     // Grafico 4: Task per Priorità
-    const mappaPriorita = {}
-    tasks.forEach(t => {
+    const mappaPriorita: Record<string, number> = {}
+    tasks.forEach((t) => {
       const prio = t.priority || 'Media'
       const prioFormattata = prio.charAt(0).toUpperCase() + prio.slice(1)
       mappaPriorita[prioFormattata] = (mappaPriorita[prioFormattata] || 0) + 1
     })
-    const taskPerPriorita = Object.keys(mappaPriorita).map(name => ({ name, value: mappaPriorita[name] }))
+    const taskPerPriorita = Object.keys(mappaPriorita).map((name) => ({ name, value: mappaPriorita[name] }))
 
     return {
       completatiOggi, completatiSettimana, completatiMese, inRitardo, aperti, tempoMedioStr,
       andamentoSettimanale, completamentiMensili, taskPerCategoria, taskPerPriorita
     }
-  }, [tasks, overdueTasks, stats])
+  }, [tasks, overdueTasks, stats, categories])
 
   // Codice preesistente per i task recenti e il carico di lavoro
   const recentTasks = [...tasks]
@@ -138,6 +142,41 @@ export function Dashboard() {
   }))
 
   const completionRate = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0
+
+  const latestGoals = useMemo(() => {
+    const grouped = {
+      daily: [...goals].filter((goal) => goal.type === 'daily').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0],
+      weekly: [...goals].filter((goal) => goal.type === 'weekly').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0],
+    }
+
+    return grouped
+  }, [goals])
+
+  const activeGoal = latestGoals[goalType]
+  const activeCompleted = goalType === 'daily' ? metricheElementi.completatiOggi : metricheElementi.completatiSettimana
+  const activeProgress = activeGoal ? Math.min(100, Math.round((activeCompleted / activeGoal.target) * 100)) : 0
+  const progressLabel = activeGoal ? `${activeCompleted}/${activeGoal.target}` : 'Nessun obiettivo impostato'
+
+  const handleCreateGoal = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const target = Number(goalTarget)
+
+    if (!Number.isFinite(target) || target <= 0) {
+      setGoalFeedback('Imposta un numero valido maggiore di zero.')
+      return
+    }
+
+    createGoal({
+      userId: 'default-user',
+      type: goalType,
+      target,
+    })
+
+    setGoalFeedback(`Obiettivo ${goalType === 'daily' ? 'giornaliero' : 'settimanale'} salvato.`)
+    setGoalTarget('')
+  }
+
+  const goalHistory = useMemo(() => [...goals].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [goals])
 
   // Configurazione dei 6 indicatori precisi richiesti dal professore
   const statCards = [
@@ -176,6 +215,88 @@ export function Dashboard() {
           </div>
         ))}
       </div>
+
+      <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
+                <Target className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-slate-900">Target task giornalieri e settimanali</h2>
+                <p className="text-sm text-slate-500">Imposta un obiettivo per mantenere il ritmo delle attività completate.</p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-slate-700">{goalType === 'daily' ? 'Obiettivo giornaliero' : 'Obiettivo settimanale'}</span>
+                <span className="font-semibold text-indigo-600">{progressLabel}</span>
+              </div>
+              <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-200">
+                <div className="h-full rounded-full bg-indigo-600 transition-all duration-500" style={{ width: `${activeGoal ? activeProgress : 0}%` }} />
+              </div>
+              <div className="mt-2 text-sm text-slate-500">
+                {activeGoal ? `${activeCompleted} completati · ${activeGoal.target} target · ${activeGoal ? activeProgress : 0}%` : 'Crea il primo obiettivo per vedere il progresso.'}
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleCreateGoal} className="w-full max-w-sm rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setGoalType('daily')}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${goalType === 'daily' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+              >
+                Giornaliero
+              </button>
+              <button
+                type="button"
+                onClick={() => setGoalType('weekly')}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${goalType === 'weekly' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+              >
+                Settimanale
+              </button>
+            </div>
+
+            <label className="mt-3 block text-sm font-medium text-slate-700" htmlFor="goal-target">
+              Target task
+            </label>
+            <input
+              id="goal-target"
+              type="number"
+              min="1"
+              value={goalTarget}
+              onChange={(event) => setGoalTarget(event.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-0"
+              placeholder="Es. 10"
+            />
+            <button type="submit" className="mt-3 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+              Salva obiettivo
+            </button>
+            {goalFeedback ? <p className="mt-2 text-xs text-slate-500">{goalFeedback}</p> : null}
+          </form>
+        </div>
+
+        <div className="mt-5 border-t border-slate-200 pt-4">
+          <h3 className="text-sm font-semibold text-slate-700">Storico obiettivi</h3>
+          <div className="mt-3 space-y-2">
+            {goalHistory.length === 0 ? (
+              <p className="text-sm text-slate-500">Nessun obiettivo creato finora.</p>
+            ) : (
+              goalHistory.slice(0, 4).map((goal) => (
+                <div key={goal.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                  <span className="font-medium text-slate-700">
+                    {goal.type === 'daily' ? 'Giornaliero' : 'Settimanale'} · target {goal.target}
+                  </span>
+                  <span className="text-slate-500">{new Date(goal.createdAt).toLocaleDateString('it-IT')}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* STRUTTURA ESISTENTE (Task recenti, Avanzamento, Carico di lavoro) */}
       <div className="grid lg:grid-cols-3 gap-6">
@@ -321,7 +442,7 @@ export function Dashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={metricheElementi.taskPerCategoria} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={3} dataKey="value">
-                    {metricheElementi.taskPerCategoria.map((entry, index) => (
+                    {metricheElementi.taskPerCategoria.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORI_CATEGORIE[index % COLORI_CATEGORIE.length]} />
                     ))}
                   </Pie>

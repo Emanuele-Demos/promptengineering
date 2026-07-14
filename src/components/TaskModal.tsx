@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
-import type { Task, TaskPriority, TaskStatus } from '../types'
+import type { Attachment, Task, TaskPriority, TaskStatus } from '../types'
+
+const REMINDER_PRESETS = [
+  { label: '5m', value: 5 * 60 * 1000 },
+  { label: '30m', value: 30 * 60 * 1000 },
+  { label: '1h', value: 60 * 60 * 1000 },
+  { label: '1d', value: 24 * 60 * 60 * 1000 },
+]
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
@@ -15,7 +22,20 @@ interface TaskModalProps {
   onClose: () => void
 }
 
-const emptyForm = {
+const emptyForm: {
+  title: string
+  description: string
+  notes: string
+  links: string
+  attachments: Attachment[]
+  status: TaskStatus
+  priority: TaskPriority
+  assigneeId: string
+  categoryId: string
+  dueDate: string
+  tags: string
+  reminderAt: string
+} = {
   title: '',
   description: '',
   notes: '',
@@ -27,6 +47,7 @@ const emptyForm = {
   categoryId: '' as string,
   dueDate: '',
   tags: '',
+  reminderAt: '',
 }
 
 export function TaskModal({
@@ -54,6 +75,7 @@ export function TaskModal({
         categoryId: task.categoryId ?? '',
         dueDate: task.dueDate ?? '',
         tags: task.tags.join(', '),
+        reminderAt: task.reminderAt ?? '',
       })
     } else {
       setForm({ ...emptyForm, status: defaultStatus })
@@ -80,6 +102,7 @@ export function TaskModal({
       assigneeId: form.assigneeId || null,
       categoryId: form.categoryId || null,
       dueDate: form.dueDate || null,
+      reminderAt: form.reminderAt || null,
       tags: form.tags
         .split(',')
         .map((t) => t.trim())
@@ -286,6 +309,30 @@ export function TaskModal({
                 placeholder="backend, urgent (separati da virgola)"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Reminder
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {REMINDER_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => setForm({ ...form, reminderAt: new Date(Date.now() + preset.value).toISOString() })}
+                  className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            <input
+              type="datetime-local"
+              value={form.reminderAt ? form.reminderAt.slice(0, 16) : ''}
+              onChange={(e) => setForm({ ...form, reminderAt: new Date(e.target.value).toISOString() })}
+              className="mt-2 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
 
           <div>

@@ -12,14 +12,16 @@ export const getTasks = (req, res) => {
 };
 
 export const createTask = (req, res) => {
-  const { id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tags, createdAt, updatedAt } = req.body;
+  const { id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tags, order, createdAt, updatedAt } = req.body;
   const tagsStr = JSON.stringify(tags || []);
+  const safeOrder = typeof order === 'number' ? order : 0;
+
   db.run(
-    'INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tagsStr, createdAt, updatedAt],
+    'INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tags, "order", createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tagsStr, safeOrder, createdAt, updatedAt],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
-      res.status(201).json({ id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tags, createdAt, updatedAt });
+      res.status(201).json({ id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tags, order: safeOrder, createdAt, updatedAt });
     }
   );
 };

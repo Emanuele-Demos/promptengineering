@@ -1,7 +1,8 @@
-import { Calendar, GripVertical, Paperclip } from 'lucide-react'
+import { Calendar, GripVertical, Paperclip, Repeat } from 'lucide-react'
 import type { Task, Category } from '../types'
 import { useApp } from '../store/AppContext'
 import { formatDate, isOverdue } from '../utils/helpers'
+import { formatNextOccurrence, formatRecurrenceSummary } from '../utils/recurrence'
 import { MemberAvatar } from './MemberAvatar'
 import { PriorityBadge } from './PriorityBadge'
 import { CategoryBadge } from './CategoryBadge'
@@ -24,6 +25,8 @@ export function TaskCard({
   const { getMember } = useApp()
   const assignee = getMember(task.assigneeId)
   const overdue = isOverdue(task.dueDate, task.status)
+  const recurrenceSummary = task.isRecurring ? formatRecurrenceSummary(task) : ''
+  const nextOccurrenceLabel = task.isRecurring ? formatNextOccurrence(task.nextOccurrence) : null
 
   return (
     <div
@@ -38,11 +41,23 @@ export function TaskCard({
         )}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
+            {task.isRecurring && (
+              <Repeat className="w-3.5 h-3.5 text-indigo-500 shrink-0" aria-hidden />
+            )}
             <h4 className="text-sm font-semibold text-slate-900 leading-snug">
               {task.title}
             </h4>
+            {task.isRecurring && (
+              <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded text-[10px] font-semibold uppercase tracking-wide">
+                Ricorrente
+              </span>
+            )}
             {category && <CategoryBadge category={category} />}
           </div>
+
+          {recurrenceSummary && (
+            <p className="text-[11px] text-indigo-600 mb-2">{recurrenceSummary}</p>
+          )}
 
           {task.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
@@ -72,6 +87,11 @@ export function TaskCard({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {nextOccurrenceLabel && (
+                <span className="text-[10px] text-indigo-500" title="Prossima ricorrenza">
+                  ↪ {nextOccurrenceLabel}
+                </span>
+              )}
               {task.dueDate && (
                 <span
                   className={`flex items-center gap-1 text-[11px] ${overdue ? 'text-red-600 font-medium' : 'text-slate-500'

@@ -54,6 +54,10 @@ export interface GoalHistory {
 
 export type ReminderType = 'none' | '5m' | '30m' | '1h' | '1d' | 'custom'
 
+export type RepeatType = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
+export type RepeatCustomUnit = 'hours' | 'days' | 'weeks' | 'months' | 'years'
+export type RepeatEndType = 'never' | 'occurrences' | 'date'
+
 export interface Notification {
   id: string
   userId: string
@@ -102,6 +106,17 @@ export interface Task {
   dueDate: string | null
   reminderDate: string | null
   reminderType: ReminderType | null
+  isRecurring?: boolean
+  repeatType?: RepeatType | null
+  repeatEvery?: number
+  repeatCustomUnit?: RepeatCustomUnit | null
+  repeatEndType?: RepeatEndType
+  repeatEnd?: string | null
+  repeatOccurrences?: number | null
+  occurrencesGenerated?: number
+  lastGeneratedAt?: string | null
+  nextOccurrence?: string | null
+  parentTaskId?: string | null
   tags: string[]
   createdAt: string
   updatedAt: string
@@ -125,6 +140,17 @@ interface TaskRow {
   reminderDate: string | null
   reminderType: string | null
   reminderSentAt: string | null
+  isRecurring: number
+  repeatType: string | null
+  repeatEvery: number | null
+  repeatCustomUnit: string | null
+  repeatEndType: string | null
+  repeatEnd: string | null
+  repeatOccurrences: number | null
+  occurrencesGenerated: number | null
+  lastGeneratedAt: string | null
+  nextOccurrence: string | null
+  parentTaskId: string | null
   createdAt: string
   updatedAt: string
 }

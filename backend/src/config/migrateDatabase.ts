@@ -98,6 +98,26 @@ export async function runMigrations(db: Database): Promise<void> {
     await db.exec(`ALTER TABLE tasks ADD COLUMN reminderSentAt TEXT`)
   }
 
+  const recurrenceColumns: [string, string][] = [
+    ['isRecurring', 'INTEGER NOT NULL DEFAULT 0'],
+    ['repeatType', 'TEXT'],
+    ['repeatEvery', 'INTEGER DEFAULT 1'],
+    ['repeatCustomUnit', 'TEXT'],
+    ['repeatEndType', "TEXT DEFAULT 'never'"],
+    ['repeatEnd', 'TEXT'],
+    ['repeatOccurrences', 'INTEGER'],
+    ['occurrencesGenerated', 'INTEGER DEFAULT 0'],
+    ['lastGeneratedAt', 'TEXT'],
+    ['nextOccurrence', 'TEXT'],
+    ['parentTaskId', 'TEXT'],
+  ]
+
+  for (const [column, definition] of recurrenceColumns) {
+    if (!(await columnExists(db, 'tasks', column))) {
+      await db.exec(`ALTER TABLE tasks ADD COLUMN ${column} ${definition}`)
+    }
+  }
+
   const notificationsTable = (await db.all(
     `SELECT name FROM sqlite_master WHERE type='table' AND name='notifications'`
   )) as { name: string }[]

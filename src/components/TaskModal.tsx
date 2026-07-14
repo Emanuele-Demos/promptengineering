@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
-import type { Task, TaskPriority, TaskStatus, ReminderType } from '../types'
-import { PRIORITY_LABELS, REMINDER_LABELS, STATUS_LABELS } from '../types'
+import type { Task, TaskPriority, TaskStatus, ReminderType, RepeatType, RepeatCustomUnit, RepeatEndType } from '../types'
+import { PRIORITY_LABELS, REMINDER_LABELS, REPEAT_CUSTOM_UNIT_LABELS, REPEAT_END_TYPE_LABELS, REPEAT_TYPE_LABELS, STATUS_LABELS } from '../types'
 import { useApp } from '../store/AppContext'
 import { upsertTask } from '../api/tasks.js'
 import { setCurrentUserId } from '../api/notifications.js'
@@ -11,6 +11,10 @@ import {
   toDatetimeLocalValue,
   validateReminderClient,
 } from '../utils/reminder'
+import {
+  formatRecurrenceSummary,
+  validateRecurrenceClient,
+} from '../utils/recurrence'
 import { TaskNotesSection } from './TaskNotesSection'
 import { TaskAttachmentsSection } from './TaskAttachmentsSection'
 
@@ -34,6 +38,13 @@ const emptyForm = {
   categoryId: '',
   reminderType: 'none' as ReminderType,
   customReminderAt: '',
+  isRecurring: false,
+  repeatType: 'monthly' as RepeatType,
+  repeatEvery: 1,
+  repeatCustomUnit: 'days' as RepeatCustomUnit,
+  repeatEndType: 'never' as RepeatEndType,
+  repeatEnd: '',
+  repeatOccurrences: 10,
 }
 
 export function TaskModal({
@@ -49,6 +60,7 @@ export function TaskModal({
   const [form, setForm] = useState(emptyForm)
   const [syncError, setSyncError] = useState('')
   const [reminderError, setReminderError] = useState('')
+  const [recurrenceError, setRecurrenceError] = useState('')
   const [reminderSaved, setReminderSaved] = useState('')
 
   useEffect(() => {
@@ -67,12 +79,20 @@ export function TaskModal({
         reminderType: (task.reminderType ?? 'none') as ReminderType,
         customReminderAt:
           task.reminderType === 'custom' ? toDatetimeLocalValue(task.reminderDate) : '',
+        isRecurring: task.isRecurring ?? false,
+        repeatType: (task.repeatType ?? 'monthly') as RepeatType,
+        repeatEvery: task.repeatEvery ?? 1,
+        repeatCustomUnit: (task.repeatCustomUnit ?? 'days') as RepeatCustomUnit,
+        repeatEndType: (task.repeatEndType ?? 'never') as RepeatEndType,
+        repeatEnd: task.repeatEnd ?? '',
+        repeatOccurrences: task.repeatOccurrences ?? 10,
       })
     } else {
       setForm({ ...emptyForm, status: defaultStatus })
     }
     setSyncError('')
     setReminderError('')
+    setRecurrenceError('')
     setReminderSaved('')
   }, [task, defaultStatus, open])
 
@@ -100,6 +120,18 @@ export function TaskModal({
       reminderType: reminderType === 'none' ? null : reminderType,
       reminderDate,
       tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+      isRecurring: form.isRecurring,
+      repeatType: form.isRecurring ? form.repeatType : null,
+      repeatEvery: form.repeatEvery,
+      repeatCustomUnit: form.isRecurring && form.repeatType === 'custom' ? form.repeatCustomUnit : null,
+      repeatEndType: form.isRecurring ? form.repeatEndType : 'never',
+      repeatEnd: form.isRecurring && form.repeatEndType === 'date' ? form.repeatEnd || null : null,
+      repeatOccurrences:
+        form.isRecurring && form.repeatEndType === 'occurrences' ? form.repeatOccurrences : null,
+      occurrencesGenerated: task?.occurrencesGenerated ?? (form.isRecurring ? 1 : 0),
+      lastGeneratedAt: task?.lastGeneratedAt ?? null,
+      nextOccurrence: task?.nextOccurrence ?? null,
+      parentTaskId: task?.parentTaskId ?? null,
       createdAt,
       updatedAt: new Date().toISOString(),
     }
@@ -128,6 +160,21 @@ export function TaskModal({
       return
     }
 
+    const recurrenceMsg = validateRecurrenceClient(
+      form.isRecurring,
+      form.dueDate || null,
+      form.repeatEvery,
+      form.repeatEndType,
+      form.repeatEnd || null,
+      form.repeatOccurrences,
+      form.repeatType,
+      form.repeatCustomUnit
+    )
+    if (recurrenceMsg) {
+      setRecurrenceError(recurrenceMsg)
+      return
+    }
+
     if (form.assigneeId) {
       setCurrentUserId(form.assigneeId)
     }
@@ -148,9 +195,22 @@ export function TaskModal({
         reminderType: payload.reminderType,
         reminderDate: payload.reminderDate,
         tags: payload.tags,
+        isRecurring: payload.isRecurring,
+        repeatType: payload.repeatType,
+        repeatEvery: payload.repeatEvery,
+        repeatCustomUnit: payload.repeatCustomUnit,
+        repeatEndType: payload.repeatEndType,
+        repeatEnd: payload.repeatEnd,
+        repeatOccurrences: payload.repeatOccurrences,
+        occurrencesGenerated: payload.occurrencesGenerated,
+        nextOccurrence: payload.nextOccurrence,
       })
       await syncToBackend(payload)
-      setReminderSaved('Promemoria salvato con successo')
+      setReminderSaved(
+        form.isRecurring
+          ? 'Task ricorrente salvato con successo'
+          : 'Promemoria salvato con successo'
+      )
     } else {
       const now = new Date().toISOString()
       const localPayload = {
@@ -170,10 +230,23 @@ export function TaskModal({
             ? fromDatetimeLocalValue(form.customReminderAt)
             : null,
         tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        isRecurring: form.isRecurring,
+        repeatType: form.isRecurring ? form.repeatType : null,
+        repeatEvery: form.repeatEvery,
+        repeatCustomUnit: form.isRecurring && form.repeatType === 'custom' ? form.repeatCustomUnit : null,
+        repeatEndType: form.isRecurring ? form.repeatEndType : 'never',
+        repeatEnd: form.isRecurring && form.repeatEndType === 'date' ? form.repeatEnd || null : null,
+        repeatOccurrences:
+          form.isRecurring && form.repeatEndType === 'occurrences' ? form.repeatOccurrences : null,
+        occurrencesGenerated: form.isRecurring ? 1 : 0,
       }
       const newId = addTask(localPayload)
       await syncToBackend(buildPayload(newId, now))
-      setReminderSaved('Promemoria salvato con successo')
+      setReminderSaved(
+        form.isRecurring
+          ? 'Task ricorrente creato con successo'
+          : 'Promemoria salvato con successo'
+      )
     }
     onClose()
   }
@@ -286,6 +359,12 @@ export function TaskModal({
             </p>
           )}
 
+          {recurrenceError && (
+            <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              {recurrenceError}
+            </p>
+          )}
+
           {reminderSaved && (
             <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
               {reminderSaved}
@@ -333,6 +412,135 @@ export function TaskModal({
             )}
             {form.reminderType !== 'none' && !form.dueDate && (
               <p className="text-xs text-amber-700 mt-1">Imposta una scadenza per attivare il promemoria.</p>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.isRecurring}
+                onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })}
+                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-sm font-medium text-slate-700">Task ricorrente</span>
+            </label>
+
+            {form.isRecurring && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Frequenza</label>
+                    <select
+                      value={form.repeatType}
+                      onChange={(e) =>
+                        setForm({ ...form, repeatType: e.target.value as RepeatType })
+                      }
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      {(Object.entries(REPEAT_TYPE_LABELS) as [RepeatType, string][]).map(
+                        ([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Ogni</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.repeatEvery}
+                      onChange={(e) =>
+                        setForm({ ...form, repeatEvery: Math.max(1, parseInt(e.target.value, 10) || 1) })
+                      }
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                {form.repeatType === 'custom' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Unità</label>
+                    <select
+                      value={form.repeatCustomUnit}
+                      onChange={(e) =>
+                        setForm({ ...form, repeatCustomUnit: e.target.value as RepeatCustomUnit })
+                      }
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      {(Object.entries(REPEAT_CUSTOM_UNIT_LABELS) as [RepeatCustomUnit, string][]).map(
+                        ([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Fine ricorrenza</label>
+                  <select
+                    value={form.repeatEndType}
+                    onChange={(e) =>
+                      setForm({ ...form, repeatEndType: e.target.value as RepeatEndType })
+                    }
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {(Object.entries(REPEAT_END_TYPE_LABELS) as [RepeatEndType, string][]).map(
+                      ([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+
+                {form.repeatEndType === 'date' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Data di fine</label>
+                    <input
+                      type="date"
+                      value={form.repeatEnd}
+                      onChange={(e) => setForm({ ...form, repeatEnd: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                )}
+
+                {form.repeatEndType === 'occurrences' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Numero massimo di occorrenze
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.repeatOccurrences}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          repeatOccurrences: Math.max(1, parseInt(e.target.value, 10) || 1),
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                )}
+
+                {!form.dueDate && (
+                  <p className="text-xs text-amber-700">Imposta una scadenza per calcolare la prossima ricorrenza.</p>
+                )}
+
+                <p className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                  {formatRecurrenceSummary(form) || 'Configura la ricorrenza'}
+                </p>
+              </>
             )}
           </div>
 

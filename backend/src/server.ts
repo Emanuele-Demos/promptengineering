@@ -2,6 +2,7 @@ import app from "./app";
 import { initializeDatabase } from "./config/initDatabase";
 import { startReminderScheduler } from "./services/reminderScheduler";
 import { startGoalScheduler } from "./services/goalScheduler";
+import { startRecurrenceScheduler } from "./services/recurrenceScheduler";
 
 const PORT = 3001;
 
@@ -10,6 +11,7 @@ async function startServer() {
         await initializeDatabase();
         startReminderScheduler();
         startGoalScheduler();
+        startRecurrenceScheduler();
 
         app.listen(PORT, () => {
             console.log(`🚀 Server avviato sulla porta ${PORT}`);

@@ -71,6 +71,19 @@ export function errorHandler(
     return
   }
 
+  if (
+    err.message.includes('Tipo di ricorrenza') ||
+    err.message.includes('intervallo di ricorrenza') ||
+    err.message.includes('repeatEvery') ||
+    err.message.includes('ricorrenza personalizzata') ||
+    err.message.includes('fine ricorrenza') ||
+    err.message.includes('occorrenze') ||
+    err.message.includes('task ricorrente')
+  ) {
+    res.status(400).json({ message: err.message })
+    return
+  }
+
   if (err.message.includes('FOREIGN KEY constraint failed')) {
     res.status(400).json({ message: 'Riferimento non valido' })
     return

@@ -7,7 +7,25 @@ import { categoryExists, getCategoryById } from './categoryService'
 import type { ReminderType } from '../utils/reminderValidation'
 
 const TASK_SELECT = `id, title, description, notes, status, priority, assigneeId, categoryId,
-  dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt`
+  dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
+  isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
+  repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId`
+
+function mapRecurrenceToTask(row: TaskRow) {
+  return {
+    isRecurring: Boolean(row.isRecurring),
+    repeatType: (row.repeatType as Task['repeatType']) ?? null,
+    repeatEvery: row.repeatEvery ?? 1,
+    repeatCustomUnit: (row.repeatCustomUnit as Task['repeatCustomUnit']) ?? null,
+    repeatEndType: (row.repeatEndType as Task['repeatEndType']) ?? 'never',
+    repeatEnd: row.repeatEnd,
+    repeatOccurrences: row.repeatOccurrences,
+    occurrencesGenerated: row.occurrencesGenerated ?? 0,
+    lastGeneratedAt: row.lastGeneratedAt,
+    nextOccurrence: row.nextOccurrence,
+    parentTaskId: row.parentTaskId,
+  }
+}
 
 async function getTagsForTask(taskId: string, db: Database): Promise<string[]> {
   const rows = (await db.all(
@@ -34,11 +52,12 @@ export async function buildTaskFromRow(row: TaskRow, db: Database): Promise<Task
     row.categoryId ? getCategoryById(row.categoryId, db) : Promise.resolve(undefined),
   ])
 
-  const { reminderSentAt: _sent, ...taskBase } = row
+  const { reminderSentAt: _sent, isRecurring: _ir, ...taskBase } = row
 
   return {
     ...taskBase,
-    reminderType: (row.reminderType as import('../utils/reminderValidation').ReminderType | null) ?? null,
+    reminderType: (row.reminderType as ReminderType | null) ?? null,
+    ...mapRecurrenceToTask(row),
     tags,
     links,
     attachments,
@@ -59,6 +78,37 @@ async function replaceTaskLinks(taskId: string, links: string[], db: Database): 
   for (const link of links) {
     await db.run(`INSERT INTO task_links (taskId, link) VALUES (?, ?)`, [taskId, link])
   }
+}
+
+function recurrenceInsertValues(
+  task: Pick<
+    Task,
+    | 'isRecurring'
+    | 'repeatType'
+    | 'repeatEvery'
+    | 'repeatCustomUnit'
+    | 'repeatEndType'
+    | 'repeatEnd'
+    | 'repeatOccurrences'
+    | 'occurrencesGenerated'
+    | 'lastGeneratedAt'
+    | 'nextOccurrence'
+    | 'parentTaskId'
+  >
+) {
+  return [
+    task.isRecurring ? 1 : 0,
+    task.repeatType ?? null,
+    task.repeatEvery ?? 1,
+    task.repeatCustomUnit ?? null,
+    task.repeatEndType ?? 'never',
+    task.repeatEnd ?? null,
+    task.repeatOccurrences ?? null,
+    task.occurrencesGenerated ?? 0,
+    task.lastGeneratedAt ?? null,
+    task.nextOccurrence ?? null,
+    task.parentTaskId ?? null,
+  ]
 }
 
 export async function getAllTasks(db?: Database): Promise<Task[]> {
@@ -93,8 +143,10 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
     await connection.run(
       `INSERT INTO tasks (
         id, title, description, notes, status, priority, assigneeId, categoryId,
-        dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
+        isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
+        repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         task.id,
         task.title,
@@ -110,6 +162,7 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         null,
         task.createdAt,
         task.updatedAt,
+        ...recurrenceInsertValues(task),
       ]
     )
 
@@ -132,6 +185,17 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         reminderSentAt: null,
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
+        isRecurring: task.isRecurring ? 1 : 0,
+        repeatType: task.repeatType ?? null,
+        repeatEvery: task.repeatEvery ?? 1,
+        repeatCustomUnit: task.repeatCustomUnit ?? null,
+        repeatEndType: task.repeatEndType ?? 'never',
+        repeatEnd: task.repeatEnd ?? null,
+        repeatOccurrences: task.repeatOccurrences ?? null,
+        occurrencesGenerated: task.occurrencesGenerated ?? 0,
+        lastGeneratedAt: task.lastGeneratedAt ?? null,
+        nextOccurrence: task.nextOccurrence ?? null,
+        parentTaskId: task.parentTaskId ?? null,
       },
       connection
     )
@@ -168,7 +232,10 @@ export async function updateTask(
         title = ?, description = ?, notes = ?, status = ?, priority = ?,
         assigneeId = ?, categoryId = ?, dueDate = ?,
         reminderDate = ?, reminderType = ?,
-        reminderSentAt = ?, updatedAt = ?
+        reminderSentAt = ?, updatedAt = ?,
+        isRecurring = ?, repeatType = ?, repeatEvery = ?, repeatCustomUnit = ?,
+        repeatEndType = ?, repeatEnd = ?, repeatOccurrences = ?,
+        occurrencesGenerated = ?, lastGeneratedAt = ?, nextOccurrence = ?, parentTaskId = ?
        WHERE id = ?`,
       [
         task.title,
@@ -183,6 +250,7 @@ export async function updateTask(
         task.reminderType,
         reminderSentAt,
         task.updatedAt,
+        ...recurrenceInsertValues(task),
         id,
       ]
     )

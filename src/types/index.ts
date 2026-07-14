@@ -66,6 +66,10 @@ export interface GoalHistory {
 
 export type ReminderType = 'none' | '5m' | '30m' | '1h' | '1d' | 'custom'
 
+export type RepeatType = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
+export type RepeatCustomUnit = 'hours' | 'days' | 'weeks' | 'months' | 'years'
+export type RepeatEndType = 'never' | 'occurrences' | 'date'
+
 export interface Notification {
   id: string
   userId: string
@@ -120,6 +124,17 @@ export interface Task {
   dueDate: string | null
   reminderDate: string | null
   reminderType: ReminderType | null
+  isRecurring?: boolean
+  repeatType?: RepeatType | null
+  repeatEvery?: number
+  repeatCustomUnit?: RepeatCustomUnit | null
+  repeatEndType?: RepeatEndType
+  repeatEnd?: string | null
+  repeatOccurrences?: number | null
+  occurrencesGenerated?: number
+  lastGeneratedAt?: string | null
+  nextOccurrence?: string | null
+  parentTaskId?: string | null
   tags: string[]
   createdAt: string
   updatedAt: string
@@ -137,6 +152,28 @@ export const REMINDER_LABELS: Record<ReminderType, string> = {
   '1h': '1 ora prima',
   '1d': '1 giorno prima',
   custom: 'Personalizzato',
+}
+
+export const REPEAT_TYPE_LABELS: Record<RepeatType, string> = {
+  daily: 'Ogni giorno',
+  weekly: 'Ogni settimana',
+  monthly: 'Ogni mese',
+  yearly: 'Ogni anno',
+  custom: 'Personalizzata',
+}
+
+export const REPEAT_CUSTOM_UNIT_LABELS: Record<RepeatCustomUnit, string> = {
+  hours: 'Ore',
+  days: 'Giorni',
+  weeks: 'Settimane',
+  months: 'Mesi',
+  years: 'Anni',
+}
+
+export const REPEAT_END_TYPE_LABELS: Record<RepeatEndType, string> = {
+  never: 'Mai',
+  occurrences: 'Dopo N occorrenze',
+  date: 'Fino a una data',
 }
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {

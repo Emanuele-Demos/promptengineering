@@ -8,10 +8,28 @@ import {
   resolveReminderFields,
   type ReminderType,
 } from '../utils/reminderValidation'
+import {
+  isRepeatEndType,
+  isRepeatType,
+  isRepeatCustomUnit,
+  resolveRecurrenceFields,
+} from '../utils/recurrenceValidation'
 
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return value.filter((item): item is string => typeof item === 'string')
+}
+
+function parseBoolean(value: unknown, fallback = false): boolean {
+  if (typeof value === 'boolean') return value
+  if (value === 1 || value === '1' || value === 'true') return true
+  if (value === 0 || value === '0' || value === 'false') return false
+  return fallback
+}
+
+function parsePositiveInt(value: unknown, fallback: number): number {
+  const n = typeof value === 'number' ? value : parseInt(String(value), 10)
+  return Number.isInteger(n) && n > 0 ? n : fallback
 }
 
 function buildTaskPayload(
@@ -43,6 +61,52 @@ function buildTaskPayload(
     existingReminderType: existing?.reminderType ?? null,
   })
 
+  const isRecurring =
+    body.isRecurring !== undefined
+      ? parseBoolean(body.isRecurring)
+      : (existing?.isRecurring ?? false)
+
+  const rawRepeatType = body.repeatType ?? existing?.repeatType ?? 'daily'
+  const repeatType = isRepeatType(rawRepeatType) ? rawRepeatType : 'daily'
+
+  const rawEndType = body.repeatEndType ?? existing?.repeatEndType ?? 'never'
+  const repeatEndType = isRepeatEndType(rawEndType) ? rawEndType : 'never'
+
+  const rawCustomUnit = body.repeatCustomUnit ?? existing?.repeatCustomUnit ?? 'days'
+  const repeatCustomUnit = isRepeatCustomUnit(rawCustomUnit) ? rawCustomUnit : 'days'
+
+  const recurrence = resolveRecurrenceFields({
+    isRecurring,
+    repeatType: isRecurring ? repeatType : null,
+    repeatEvery: parsePositiveInt(body.repeatEvery, existing?.repeatEvery ?? 1),
+    repeatCustomUnit: isRecurring && repeatType === 'custom' ? repeatCustomUnit : null,
+    repeatEndType: isRecurring ? repeatEndType : 'never',
+    repeatEnd:
+      body.repeatEnd !== undefined
+        ? ((body.repeatEnd as string | null) || null)
+        : (existing?.repeatEnd ?? null),
+    repeatOccurrences:
+      body.repeatOccurrences !== undefined
+        ? body.repeatOccurrences != null
+          ? parsePositiveInt(body.repeatOccurrences, 1)
+          : null
+        : (existing?.repeatOccurrences ?? null),
+    dueDate,
+    existing: existing
+      ? {
+          repeatType: existing.repeatType,
+          repeatEvery: existing.repeatEvery,
+          repeatCustomUnit: existing.repeatCustomUnit,
+          repeatEndType: existing.repeatEndType,
+          repeatEnd: existing.repeatEnd,
+          repeatOccurrences: existing.repeatOccurrences,
+          occurrencesGenerated: existing.occurrencesGenerated,
+          lastGeneratedAt: existing.lastGeneratedAt,
+          parentTaskId: existing.parentTaskId,
+        }
+      : undefined,
+  })
+
   return {
     title: (body.title as string)?.trim() ?? existing?.title ?? '',
     description: (body.description as string) ?? existing?.description ?? '',
@@ -65,6 +129,7 @@ function buildTaskPayload(
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
     reminderChanged,
+    ...recurrence,
   }
 }
 
@@ -93,6 +158,7 @@ export async function createTask(req: Request, res: Response): Promise<void> {
     attachments: [],
     createdAt: now,
     updatedAt: now,
+    occurrencesGenerated: payload.isRecurring ? 1 : 0,
   }
 
   const saved = await taskService.upsertTask(task, { resetReminderSent: reminderChanged })

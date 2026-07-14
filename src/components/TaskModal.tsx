@@ -3,7 +3,7 @@ import { X, Trash2 } from 'lucide-react'
 import type { Task, TaskPriority, TaskStatus, ReminderType, RepeatType, RepeatCustomUnit, RepeatEndType, RepeatDay } from '../types'
 import { PRIORITY_LABELS, REMINDER_LABELS, REPEAT_CUSTOM_UNIT_LABELS, REPEAT_END_TYPE_LABELS, REPEAT_TYPE_LABELS, REPEAT_DAYS, STATUS_LABELS } from '../types'
 import { useApp } from '../store/AppContext'
-import { upsertTask } from '../api/tasks.js'
+import { upsertTask, uploadTaskAttachments } from '../api/tasks.js'
 import { setCurrentUserId } from '../api/notifications.js'
 import { useCategories } from '../hooks/useCategories'
 import { useProjects } from '../hooks/useProjects'
@@ -23,6 +23,7 @@ import {
 import type { EstimatedTimeUnit } from '../utils/estimatedTime'
 import { EstimatedTimeField } from './EstimatedTimeField'
 import { TaskNotesSection } from './TaskNotesSection'
+import { AttachmentUploader, type PendingAttachment } from './AttachmentUploader'
 import { TaskAttachmentsSection } from './TaskAttachmentsSection'
 import { TaskRecurrencePanel } from './TaskRecurrencePanel'
 
@@ -83,6 +84,7 @@ export function TaskModal({
   const [reminderError, setReminderError] = useState('')
   const [recurrenceError, setRecurrenceError] = useState('')
   const [estimatedTimeError, setEstimatedTimeError] = useState('')
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([])
   const [reminderSaved, setReminderSaved] = useState('')
 
   useEffect(() => {
@@ -124,6 +126,14 @@ export function TaskModal({
     setReminderError('')
     setRecurrenceError('')
     setEstimatedTimeError('')
+    setPendingAttachments((prev) => {
+      prev.forEach((item) => {
+        if (item.attachment.path.startsWith('blob:')) {
+          URL.revokeObjectURL(item.attachment.path)
+        }
+      })
+      return []
+    })
     setReminderSaved('')
   }, [task, defaultStatus, open])
 
@@ -301,8 +311,30 @@ export function TaskModal({
         estimatedTime: parseEstimatedTimeForm(form.estimatedTimeValue, form.estimatedTimeUnit),
         actualTime: null,
       }
-      const newId = addTask(localPayload)
+      const newId = addTask({
+        ...localPayload,
+        attachments: pendingAttachments.map((item) => item.attachment),
+      })
       await syncToBackend(buildPayload(newId, now))
+
+      if (pendingAttachments.length > 0) {
+        try {
+          const uploaded = (await uploadTaskAttachments(
+            newId,
+            pendingAttachments.map((item) => item.file),
+          )) as Task['attachments']
+          updateTask(newId, { attachments: uploaded })
+        } catch (err) {
+          setSyncError(
+            err instanceof Error
+              ? err.message
+              : 'Task creato, ma errore nel caricamento degli allegati',
+          )
+          setReminderSaved('Task creato con successo')
+          return
+        }
+      }
+
       setReminderSaved(
         form.isRecurring
           ? 'Task ricorrente creato con successo'
@@ -371,9 +403,18 @@ export function TaskModal({
               <TaskAttachmentsSection taskId={task.id} />
             </>
           ) : (
-            <p className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-              Salva il task per aggiungere note e allegati tramite API.
-            </p>
+            <div className="space-y-3">
+              <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                Le note saranno disponibili dopo il salvataggio del task.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Allegati</label>
+                <AttachmentUploader
+                  items={pendingAttachments}
+                  onChange={setPendingAttachments}
+                />
+              </div>
+            </div>
           )}
 
           <div>

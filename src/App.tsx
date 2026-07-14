@@ -11,6 +11,7 @@ import { GestioneObiettivi } from "./pages/GestioneObiettivi";
 import { GestioneProgetti } from "./pages/GestioneProgetti";
 import { DettaglioProgetto } from "./pages/DettaglioProgetto";
 import { Archivio } from "./pages/Archivio";
+import { CalendarPage } from "./pages/CalendarPage";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="board" element={<Board />} />
             <Route path="archivio" element={<Archivio />} />
+            <Route path="calendario" element={<CalendarPage />} />
             <Route path="team" element={<Team />} />
             <Route path="gestione_stato" element={<GestioneStato />} />
             <Route path="gestione_categorie" element={<GestioneCategorie />} />

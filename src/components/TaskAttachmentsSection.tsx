@@ -111,7 +111,7 @@ export function TaskAttachmentsSection({ taskId }: TaskAttachmentsSectionProps) 
         className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-slate-200 rounded-xl text-sm font-semibold uppercase tracking-wide text-slate-600 hover:text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all disabled:opacity-60"
       >
         <Plus className="w-4 h-4" />
-        {uploading ? 'Caricamento...' : 'Aggiungi allegato'}
+        {uploading ? 'Caricamento...' : '+ Allegati'}
       </button>
 
       {error && (

@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { Plus, Search, Timer } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import type { Task, TaskPriority, TaskStatus } from '../types'
 import { useApp } from '../store/AppContext'
 import { useCategories } from '../hooks/useCategories'
@@ -54,6 +55,7 @@ function sortTasks(tasks: Task[], sortBy: SortField, sortDir: SortDir, favorites
 
 export function Board() {
   const { tasks, moveTask, archiveTask, stats } = useApp()
+  const location = useLocation()
   const { categories, loading: categoriesLoading, getCategoryById } = useCategories()
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -65,6 +67,18 @@ export function Board() {
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [success, setSuccess] = useState('')
+
+  useEffect(() => {
+    const openTaskId = (location.state as { openTaskId?: string } | null)?.openTaskId
+    if (!openTaskId) return
+
+    const task = tasks.find((t) => t.id === openTaskId)
+    if (task) {
+      setSelectedTask(task)
+      setModalOpen(true)
+    }
+    window.history.replaceState({}, document.title)
+  }, [location.state, tasks])
 
   const activeTasks = tasks.filter((t) => !t.archived)
 

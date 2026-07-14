@@ -9,6 +9,7 @@ import {
   Target,
   FolderKanban,
   Archive,
+  CalendarDays,
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import { useProjects } from '../hooks/useProjects'
@@ -18,6 +19,7 @@ const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/board', label: 'Board', icon: Kanban },
   { to: '/archivio', label: 'Archivio', icon: Archive },
+  { to: '/calendario', label: 'Calendario', icon: CalendarDays },
   { to: '/team', label: 'Team', icon: Users },
   { to: '/gestione_stato', label: 'Gestione Stato', icon: ListChecks },
   { to: '/gestione_categorie', label: 'Categorie', icon: FolderOpen },

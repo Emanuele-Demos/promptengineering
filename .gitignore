@@ -1,0 +1,29 @@
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+build/
+dist/
+.dart_tool/
+mobile/build/
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs and caches
+*.log
+.cache/
+
+# Codex local helpers
+admin/.codex-user-ui-server.js

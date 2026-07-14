@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WineCellar AI Admin</title>
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">W</div>
+      <div>
+        <strong>WineCellar AI</strong>
+        <span>Admin Console</span>
+      </div>
+    </div>
+    <nav aria-label="Sezioni admin">
+      <button class="active" data-view="dashboard" type="button"><span>Dashboard</span></button>
+      <button data-view="users" type="button"><span>Utenti</span></button>
+      <button data-view="wines" type="button"><span>Vini</span></button>
+      <button data-view="reviews" type="button"><span>Recensioni</span></button>
+      <button data-view="events" type="button"><span>Eventi</span></button>
+      <button data-view="moderation" type="button"><span>Moderazione</span></button>
+    </nav>
+    <div class="sidebar-status">
+      <span class="pulse"></span>
+      <div>
+        <strong>Sistema online</strong>
+        <small>Demo locale attiva</small>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow" id="sectionLabel">Pannello amministratore</p>
+        <h1 id="pageTitle">Controllo operativo</h1>
+      </div>
+      <div class="toolbar">
+        <label class="search-box">
+          <span>Cerca</span>
+          <input id="globalSearch" type="search" placeholder="Utente, vino, evento..." aria-label="Cerca">
+        </label>
+        <button class="primary" id="primaryAction" type="button">Sincronizza</button>
+      </div>
+    </header>
+    <section id="app" aria-live="polite"></section>
+  </main>
+
+  <dialog id="modal">
+    <form method="dialog" class="modal-content" id="modalForm">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Modifica dati</p>
+          <h2 id="modalTitle">Nuovo elemento</h2>
+        </div>
+        <button class="icon-button" value="cancel" type="submit" aria-label="Chiudi">x</button>
+      </div>
+      <div id="modalFields" class="form-grid"></div>
+      <menu>
+        <button value="cancel" type="submit">Annulla</button>
+        <button class="primary" value="default" id="modalSave" type="submit">Salva</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="./app.js"></script>
+</body>
+</html>

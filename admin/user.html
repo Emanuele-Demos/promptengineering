@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WineCellar AI</title>
+  <link rel="stylesheet" href="./user.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="phone" aria-label="Anteprima app utente WineCellar AI">
+      <header class="topbar">
+        <div>
+          <p class="kicker">La tua cantina intelligente</p>
+          <h1>WineCellar AI</h1>
+        </div>
+        <button class="avatar" type="button" data-view="profile" aria-label="Profilo">GR</button>
+      </header>
+
+      <section id="screen" class="screen" aria-live="polite"></section>
+
+      <nav class="tabbar" aria-label="Navigazione app">
+        <button class="active" data-view="home" type="button"><span>Home</span></button>
+        <button data-view="sommelier" type="button"><span>AI</span></button>
+        <button data-view="cellar" type="button"><span>Cantina</span></button>
+        <button data-view="game" type="button"><span>Gioco</span></button>
+        <button data-view="smart" type="button"><span>Smart</span></button>
+        <button data-view="profile" type="button"><span>Profilo</span></button>
+      </nav>
+    </section>
+  </main>
+
+  <dialog id="reviewDialog">
+    <form method="dialog" id="reviewForm" class="review-form">
+      <div class="dialog-head">
+        <div>
+          <p class="kicker">Recensione obbligatoria</p>
+          <h2 id="reviewTitle">Bevi bottiglia</h2>
+        </div>
+        <button value="cancel" type="submit" aria-label="Chiudi">x</button>
+      </div>
+      <div class="review-grid">
+        <label>Voto
+          <select name="rating" required>
+            <option value="5">5 stelle</option>
+            <option value="4">4 stelle</option>
+            <option value="3">3 stelle</option>
+            <option value="2">2 stelle</option>
+            <option value="1">1 stella</option>
+          </select>
+        </label>
+        <label>Profumo<input name="aroma" required></label>
+        <label>Colore<input name="color" required></label>
+        <label>Corpo<input name="body" required></label>
+        <label>Acidita<input name="acidity" required></label>
+        <label>Tannini<input name="tannins" required></label>
+        <label>Persistenza<input name="persistence" required></label>
+        <label>Equilibrio<input name="balance" required></label>
+        <label>Abbinamento<input name="pairing" required></label>
+        <label>Temperatura<input name="temperature" required></label>
+        <label class="full">Commento<textarea name="comment" required></textarea></label>
+        <label class="check full"><input name="buyAgain" type="checkbox" checked> Lo ricomprerei</label>
+      </div>
+      <menu>
+        <button value="cancel" type="submit">Annulla</button>
+        <button class="primary" value="save" type="submit">Salva e scala</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="./user.js"></script>
+</body>
+</html>

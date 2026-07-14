@@ -1,0 +1,53 @@
+services:
+  api:
+    build:
+      context: ./backend
+    environment:
+      APP_ENV: local
+      APP_KEY: base64:local-dev-key
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: winecellar
+      DB_USERNAME: winecellar
+      DB_PASSWORD: winecellar
+      REDIS_HOST: redis
+      JWT_SECRET: local-jwt-secret-change-me
+      STORAGE_DISK: s3
+      GRAPEMINDS_API_BASE_URL: https://api.grapeminds.it
+      GRAPEMINDS_API_KEY: ''
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/var/www/html
+
+  admin:
+    image: nginx:1.27-alpine
+    ports:
+      - "8090:80"
+    volumes:
+      - ./admin:/usr/share/nginx/html:ro
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: winecellar
+      POSTGRES_USER: winecellar
+      POSTGRES_PASSWORD: winecellar
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres-data:
+

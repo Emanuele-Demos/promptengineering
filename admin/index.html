@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WineCellar AI Admin</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">WineCellar AI</div>
+    <nav>
+      <button class="active">Dashboard</button>
+      <button>Utenti</button>
+      <button>Vini</button>
+      <button>Recensioni</button>
+      <button>Eventi</button>
+      <button>Moderazione</button>
+    </nav>
+  </aside>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">Pannello amministratore</p>
+        <h1>Controllo operativo</h1>
+      </div>
+      <button class="primary">Sincronizza</button>
+    </header>
+
+    <section class="metrics">
+      <article><span>Utenti</span><strong>12.480</strong></article>
+      <article><span>Vini catalogati</span><strong>84.215</strong></article>
+      <article><span>Recensioni</span><strong>31.902</strong></article>
+      <article><span>Segnalazioni aperte</span><strong>18</strong></article>
+    </section>
+
+    <section class="split">
+      <div>
+        <h2>Moderazione contenuti</h2>
+        <table>
+          <thead>
+            <tr><th>Elemento</th><th>Motivo</th><th>Stato</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Degustazione #4321</td><td>Foto da verificare</td><td><span class="badge warn">In coda</span></td></tr>
+            <tr><td>Commento #991</td><td>Linguaggio</td><td><span class="badge">Assegnato</span></td></tr>
+            <tr><td>Evento #204</td><td>Dati incompleti</td><td><span class="badge danger">Urgente</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h2>Master data</h2>
+        <div class="tasks">
+          <label><input type="checkbox" checked> Produttori verificati</label>
+          <label><input type="checkbox"> Regioni da normalizzare</label>
+          <label><input type="checkbox" checked> Denominazioni aggiornate</label>
+          <label><input type="checkbox"> Eventi geocodificati</label>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

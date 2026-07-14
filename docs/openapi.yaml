@@ -1,0 +1,43 @@
+openapi: 3.1.0
+info:
+  title: WineCellar AI API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      responses:
+        "200":
+          description: User and JWT token
+  /auth/login:
+    post:
+      summary: Login with email and password
+      responses:
+        "200":
+          description: User and JWT token
+  /cellar/dashboard:
+    get:
+      summary: Cellar dashboard metrics
+      responses:
+        "200":
+          description: Dashboard metrics
+  /wines:
+    get:
+      summary: List wines
+      responses:
+        "200":
+          description: Paginated wine collection
+    post:
+      summary: Create wine manually or from recognition result
+      responses:
+        "200":
+          description: Created wine
+  /wines/consume:
+    post:
+      summary: Save mandatory tasting review and consume one bottle
+      description: Quantity is decremented only after all required tasting fields are valid.
+      responses:
+        "200":
+          description: Tasting and updated wine

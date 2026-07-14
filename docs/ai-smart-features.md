@@ -84,7 +84,7 @@ Current demo score is based on distance, farming method and bottle weight. Produ
 
 ## Nearby Wineries and Wine Places
 
-The user app now uses browser geolocation to find nearby wineries, wine bars and wine shops. In the demo, places are stored locally and sorted with the Haversine distance formula.
+The user app uses browser geolocation to find nearby wineries, wine bars and wine shops. Production lookup is exposed by `GET /api/v1/places/nearby?lat={lat}&lng={lng}` and backed by Geoapify when `GEOAPIFY_API_KEY` is configured. The demo can still fall back to locally stored places sorted with the Haversine distance formula.
 
 Production implementation should replace the local list with one of these providers:
 

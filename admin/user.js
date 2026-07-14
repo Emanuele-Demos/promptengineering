@@ -1,3 +1,5 @@
+const API_BASE_URL = 'http://127.0.0.1:8080/api/v1';
+
 const state = {
   view: 'home',
   filter: 'Tutti',
@@ -563,15 +565,55 @@ function locateNearbyWineries() {
         lng: position.coords.longitude,
         source: 'Posizione reale'
       };
-      state.nearbyStatus = 'Posizione rilevata';
+      state.nearbyStatus = 'Posizione rilevata, cerco cantine reali...';
       renderSmart();
-      toast('Posizione rilevata. Cantine ordinate per distanza.');
+      loadRealNearbyPlaces(state.userPosition);
     },
     () => useDemoPosition('Permesso posizione negato: uso una posizione demo per mostrarti il flusso.'),
     { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
   );
 }
 
+async function loadRealNearbyPlaces(position) {
+  try {
+    const params = new URLSearchParams({
+      lat: String(position.lat),
+      lng: String(position.lng),
+      radius: '50000',
+      limit: '10'
+    });
+    const response = await fetch(`${API_BASE_URL}/places/nearby?${params}`);
+    if (!response.ok) throw new Error(`Backend ${response.status}`);
+    const payload = await response.json();
+    const places = Array.isArray(payload.data) ? payload.data : [];
+
+    if (places.length === 0) {
+      state.nearbyStatus = payload.configured === false
+        ? 'Geoapify non configurato nel backend: mostro dati demo.'
+        : 'Nessuna cantina reale trovata: mostro dati demo.';
+      renderSmart();
+      toast(state.nearbyStatus);
+      return;
+    }
+
+    state.nearbyPlaces = places.map((place) => ({
+      id: place.id,
+      name: place.name,
+      type: place.type || 'Wine place',
+      lat: place.lat,
+      lng: place.lng,
+      specialty: place.address || 'Luogo trovato da Geoapify',
+      open: place.website ? `Sito: ${place.website}` : 'Dettagli da Geoapify'
+    }));
+    state.nearbyStatus = `Trovati ${places.length} luoghi reali con Geoapify`;
+    renderSmart();
+    toast('Cantine reali ordinate per distanza.');
+  } catch (error) {
+    state.nearbyStatus = 'Backend Geoapify non raggiungibile: mostro dati demo.';
+    renderSmart();
+    toast(state.nearbyStatus);
+  }
+}
 function useDemoPosition(message) {
   state.userPosition = { lat: 41.9028, lng: 12.4964, source: 'Demo Roma centro' };
   state.nearbyStatus = message;

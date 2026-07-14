@@ -41,3 +41,32 @@ paths:
       responses:
         "200":
           description: Tasting and updated wine
+  /places/nearby:
+    get:
+      summary: Find nearby wineries, wine bars and wine shops
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: radius
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50000
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Nearby places from Geoapify ordered by distance

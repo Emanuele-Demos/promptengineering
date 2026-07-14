@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CellarController;
+use App\Http\Controllers\PlacesController;
 use App\Http\Controllers\TastingController;
 use App\Http\Controllers\WineCatalogController;
 use App\Support\JsonResponse;
@@ -41,6 +42,7 @@ try {
         'POST /api/v1/wines/consume' => [TastingController::class, 'consumeWithReview'],
         'GET /api/v1/catalog/search' => [WineCatalogController::class, 'search'],
         'GET /api/v1/catalog/barcode' => [WineCatalogController::class, 'barcode'],
+        'GET /api/v1/places/nearby' => [PlacesController::class, 'nearby'],
     ];
 
     $handler = $routes[$method . ' ' . $path] ?? null;

@@ -10,6 +10,8 @@ export function deleteTaskNote(noteId: string): Promise<unknown>
 export function getTaskAttachments(taskId: string): Promise<unknown[]>
 export function uploadTaskAttachments(taskId: string, files: File[]): Promise<unknown>
 export function deleteTaskAttachment(id: string): Promise<unknown>
+export function getTaskOccurrences(taskId: string): Promise<unknown>
+export function stopTaskRecurrence(taskId: string, mode: string): Promise<unknown>
 
 declare const API_ORIGIN: string
 export { API_ORIGIN }

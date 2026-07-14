@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
-import type { Task, TaskPriority, TaskStatus, ReminderType, RepeatType, RepeatCustomUnit, RepeatEndType } from '../types'
-import { PRIORITY_LABELS, REMINDER_LABELS, REPEAT_CUSTOM_UNIT_LABELS, REPEAT_END_TYPE_LABELS, REPEAT_TYPE_LABELS, STATUS_LABELS } from '../types'
+import type { Task, TaskPriority, TaskStatus, ReminderType, RepeatType, RepeatCustomUnit, RepeatEndType, RepeatDay } from '../types'
+import { PRIORITY_LABELS, REMINDER_LABELS, REPEAT_CUSTOM_UNIT_LABELS, REPEAT_END_TYPE_LABELS, REPEAT_TYPE_LABELS, REPEAT_DAYS, STATUS_LABELS } from '../types'
 import { useApp } from '../store/AppContext'
 import { upsertTask } from '../api/tasks.js'
 import { setCurrentUserId } from '../api/notifications.js'
@@ -12,11 +12,11 @@ import {
   validateReminderClient,
 } from '../utils/reminder'
 import {
-  formatRecurrenceSummary,
   validateRecurrenceClient,
 } from '../utils/recurrence'
 import { TaskNotesSection } from './TaskNotesSection'
 import { TaskAttachmentsSection } from './TaskAttachmentsSection'
+import { TaskRecurrencePanel } from './TaskRecurrencePanel'
 
 interface TaskModalProps {
   task?: Task | null
@@ -39,12 +39,21 @@ const emptyForm = {
   reminderType: 'none' as ReminderType,
   customReminderAt: '',
   isRecurring: false,
+  isRecurringActive: true,
   repeatType: 'monthly' as RepeatType,
   repeatEvery: 1,
   repeatCustomUnit: 'days' as RepeatCustomUnit,
+  repeatDays: ['monday'] as RepeatDay[],
   repeatEndType: 'never' as RepeatEndType,
   repeatEnd: '',
   repeatOccurrences: 10,
+  maxOccurrences: null as number | null,
+}
+
+function defaultRepeatDaysFromDueDate(dueDate: string): RepeatDay[] {
+  if (!dueDate) return ['monday']
+  const dow = new Date(`${dueDate}T12:00:00.000Z`).getUTCDay()
+  return [REPEAT_DAYS[(dow + 6) % 7] ?? 'monday']
 }
 
 export function TaskModal({
@@ -80,12 +89,17 @@ export function TaskModal({
         customReminderAt:
           task.reminderType === 'custom' ? toDatetimeLocalValue(task.reminderDate) : '',
         isRecurring: task.isRecurring ?? false,
+        isRecurringActive: task.isRecurringActive !== false,
         repeatType: (task.repeatType ?? 'monthly') as RepeatType,
         repeatEvery: task.repeatEvery ?? 1,
         repeatCustomUnit: (task.repeatCustomUnit ?? 'days') as RepeatCustomUnit,
+        repeatDays: task.repeatDays?.length
+          ? task.repeatDays
+          : defaultRepeatDaysFromDueDate(task.dueDate ?? ''),
         repeatEndType: (task.repeatEndType ?? 'never') as RepeatEndType,
         repeatEnd: task.repeatEnd ?? '',
         repeatOccurrences: task.repeatOccurrences ?? 10,
+        maxOccurrences: task.maxOccurrences ?? null,
       })
     } else {
       setForm({ ...emptyForm, status: defaultStatus })
@@ -121,14 +135,18 @@ export function TaskModal({
       reminderDate,
       tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
       isRecurring: form.isRecurring,
+      isRecurringActive: form.isRecurring ? form.isRecurringActive : false,
       repeatType: form.isRecurring ? form.repeatType : null,
       repeatEvery: form.repeatEvery,
       repeatCustomUnit: form.isRecurring && form.repeatType === 'custom' ? form.repeatCustomUnit : null,
+      repeatDays: form.isRecurring && form.repeatType === 'weekly' ? form.repeatDays : [],
       repeatEndType: form.isRecurring ? form.repeatEndType : 'never',
       repeatEnd: form.isRecurring && form.repeatEndType === 'date' ? form.repeatEnd || null : null,
       repeatOccurrences:
         form.isRecurring && form.repeatEndType === 'occurrences' ? form.repeatOccurrences : null,
-      occurrencesGenerated: task?.occurrencesGenerated ?? (form.isRecurring ? 1 : 0),
+      maxOccurrences: form.isRecurring ? form.maxOccurrences : null,
+      occurrencesGenerated: task?.currentOccurrences ?? task?.occurrencesGenerated ?? (form.isRecurring ? 1 : 0),
+      currentOccurrences: task?.currentOccurrences ?? task?.occurrencesGenerated ?? (form.isRecurring ? 1 : 0),
       lastGeneratedAt: task?.lastGeneratedAt ?? null,
       nextOccurrence: task?.nextOccurrence ?? null,
       parentTaskId: task?.parentTaskId ?? null,
@@ -168,7 +186,9 @@ export function TaskModal({
       form.repeatEnd || null,
       form.repeatOccurrences,
       form.repeatType,
-      form.repeatCustomUnit
+      form.repeatCustomUnit,
+      form.repeatDays,
+      form.maxOccurrences
     )
     if (recurrenceMsg) {
       setRecurrenceError(recurrenceMsg)
@@ -196,13 +216,17 @@ export function TaskModal({
         reminderDate: payload.reminderDate,
         tags: payload.tags,
         isRecurring: payload.isRecurring,
+        isRecurringActive: payload.isRecurringActive,
         repeatType: payload.repeatType,
         repeatEvery: payload.repeatEvery,
         repeatCustomUnit: payload.repeatCustomUnit,
+        repeatDays: payload.repeatDays,
         repeatEndType: payload.repeatEndType,
         repeatEnd: payload.repeatEnd,
         repeatOccurrences: payload.repeatOccurrences,
+        maxOccurrences: payload.maxOccurrences,
         occurrencesGenerated: payload.occurrencesGenerated,
+        currentOccurrences: payload.currentOccurrences,
         nextOccurrence: payload.nextOccurrence,
       })
       await syncToBackend(payload)
@@ -231,14 +255,18 @@ export function TaskModal({
             : null,
         tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
         isRecurring: form.isRecurring,
+        isRecurringActive: form.isRecurringActive,
         repeatType: form.isRecurring ? form.repeatType : null,
         repeatEvery: form.repeatEvery,
         repeatCustomUnit: form.isRecurring && form.repeatType === 'custom' ? form.repeatCustomUnit : null,
+        repeatDays: form.isRecurring && form.repeatType === 'weekly' ? form.repeatDays : [],
         repeatEndType: form.isRecurring ? form.repeatEndType : 'never',
         repeatEnd: form.isRecurring && form.repeatEndType === 'date' ? form.repeatEnd || null : null,
         repeatOccurrences:
           form.isRecurring && form.repeatEndType === 'occurrences' ? form.repeatOccurrences : null,
+        maxOccurrences: form.isRecurring ? form.maxOccurrences : null,
         occurrencesGenerated: form.isRecurring ? 1 : 0,
+        currentOccurrences: form.isRecurring ? 1 : 0,
       }
       const newId = addTask(localPayload)
       await syncToBackend(buildPayload(newId, now))
@@ -261,7 +289,7 @@ export function TaskModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200">
           <h2 className="text-lg font-bold text-slate-900">
             {isEditing ? 'Modifica task' : 'Nuovo task'}
@@ -433,9 +461,17 @@ export function TaskModal({
                     <label className="block text-sm font-medium text-slate-700 mb-1">Frequenza</label>
                     <select
                       value={form.repeatType}
-                      onChange={(e) =>
-                        setForm({ ...form, repeatType: e.target.value as RepeatType })
-                      }
+                      onChange={(e) => {
+                        const repeatType = e.target.value as RepeatType
+                        setForm({
+                          ...form,
+                          repeatType,
+                          repeatDays:
+                            repeatType === 'weekly' && form.repeatDays.length === 0
+                              ? defaultRepeatDaysFromDueDate(form.dueDate)
+                              : form.repeatDays,
+                        })
+                      }}
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       {(Object.entries(REPEAT_TYPE_LABELS) as [RepeatType, string][]).map(
@@ -537,9 +573,29 @@ export function TaskModal({
                   <p className="text-xs text-amber-700">Imposta una scadenza per calcolare la prossima ricorrenza.</p>
                 )}
 
-                <p className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-                  {formatRecurrenceSummary(form) || 'Configura la ricorrenza'}
-                </p>
+                <TaskRecurrencePanel
+                  taskId={isEditing ? task?.id : undefined}
+                  form={{
+                    isRecurring: form.isRecurring,
+                    isRecurringActive: form.isRecurringActive,
+                    repeatType: form.repeatType,
+                    repeatEvery: form.repeatEvery,
+                    repeatDays: form.repeatDays,
+                    maxOccurrences: form.maxOccurrences,
+                    repeatEndType: form.repeatEndType,
+                    repeatEnd: form.repeatEnd,
+                    dueDate: form.dueDate,
+                    status: form.status,
+                  }}
+                  onFormChange={(patch) => setForm({ ...form, ...patch })}
+                  onTaskUpdated={(updated) => {
+                    updateTask(updated.id, {
+                      isRecurringActive: updated.isRecurringActive,
+                      isRecurring: updated.isRecurring,
+                      nextOccurrence: updated.nextOccurrence,
+                    })
+                  }}
+                />
               </>
             )}
           </div>

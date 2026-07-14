@@ -5,22 +5,28 @@ import { getAttachmentsByTaskId } from './attachmentService'
 import { getNotesByTaskId } from './noteService'
 import { categoryExists, getCategoryById } from './categoryService'
 import type { ReminderType } from '../utils/reminderValidation'
+import { parseRepeatDays, serializeRepeatDays } from '../utils/recurrenceValidation'
 
 const TASK_SELECT = `id, title, description, notes, status, priority, assigneeId, categoryId,
   dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
   isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
-  repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId`
+  repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
+  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive`
 
 function mapRecurrenceToTask(row: TaskRow) {
   return {
     isRecurring: Boolean(row.isRecurring),
+    isRecurringActive: Boolean(row.isRecurringActive ?? row.isRecurring),
     repeatType: (row.repeatType as Task['repeatType']) ?? null,
     repeatEvery: row.repeatEvery ?? 1,
     repeatCustomUnit: (row.repeatCustomUnit as Task['repeatCustomUnit']) ?? null,
+    repeatDays: parseRepeatDays(row.repeatDays),
     repeatEndType: (row.repeatEndType as Task['repeatEndType']) ?? 'never',
     repeatEnd: row.repeatEnd,
     repeatOccurrences: row.repeatOccurrences,
-    occurrencesGenerated: row.occurrencesGenerated ?? 0,
+    maxOccurrences: row.maxOccurrences,
+    occurrencesGenerated: row.occurrencesGenerated ?? row.currentOccurrences ?? 0,
+    currentOccurrences: row.currentOccurrences ?? row.occurrencesGenerated ?? 0,
     lastGeneratedAt: row.lastGeneratedAt,
     nextOccurrence: row.nextOccurrence,
     parentTaskId: row.parentTaskId,
@@ -84,18 +90,23 @@ function recurrenceInsertValues(
   task: Pick<
     Task,
     | 'isRecurring'
+    | 'isRecurringActive'
     | 'repeatType'
     | 'repeatEvery'
     | 'repeatCustomUnit'
+    | 'repeatDays'
     | 'repeatEndType'
     | 'repeatEnd'
     | 'repeatOccurrences'
+    | 'maxOccurrences'
     | 'occurrencesGenerated'
+    | 'currentOccurrences'
     | 'lastGeneratedAt'
     | 'nextOccurrence'
     | 'parentTaskId'
   >
 ) {
+  const current = task.currentOccurrences ?? task.occurrencesGenerated ?? 0
   return [
     task.isRecurring ? 1 : 0,
     task.repeatType ?? null,
@@ -104,10 +115,14 @@ function recurrenceInsertValues(
     task.repeatEndType ?? 'never',
     task.repeatEnd ?? null,
     task.repeatOccurrences ?? null,
-    task.occurrencesGenerated ?? 0,
+    current,
     task.lastGeneratedAt ?? null,
     task.nextOccurrence ?? null,
     task.parentTaskId ?? null,
+    serializeRepeatDays(task.repeatDays ?? []),
+    task.maxOccurrences ?? null,
+    current,
+    task.isRecurringActive !== false && task.isRecurring ? 1 : 0,
   ]
 }
 
@@ -145,8 +160,9 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         id, title, description, notes, status, priority, assigneeId, categoryId,
         dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
         isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
-        repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
+        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         task.id,
         task.title,
@@ -186,13 +202,17 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
         isRecurring: task.isRecurring ? 1 : 0,
+        isRecurringActive: task.isRecurringActive !== false && task.isRecurring ? 1 : 0,
         repeatType: task.repeatType ?? null,
         repeatEvery: task.repeatEvery ?? 1,
         repeatCustomUnit: task.repeatCustomUnit ?? null,
+        repeatDays: serializeRepeatDays(task.repeatDays ?? []),
         repeatEndType: task.repeatEndType ?? 'never',
         repeatEnd: task.repeatEnd ?? null,
         repeatOccurrences: task.repeatOccurrences ?? null,
-        occurrencesGenerated: task.occurrencesGenerated ?? 0,
+        maxOccurrences: task.maxOccurrences ?? null,
+        occurrencesGenerated: task.currentOccurrences ?? task.occurrencesGenerated ?? 0,
+        currentOccurrences: task.currentOccurrences ?? task.occurrencesGenerated ?? 0,
         lastGeneratedAt: task.lastGeneratedAt ?? null,
         nextOccurrence: task.nextOccurrence ?? null,
         parentTaskId: task.parentTaskId ?? null,
@@ -235,7 +255,8 @@ export async function updateTask(
         reminderSentAt = ?, updatedAt = ?,
         isRecurring = ?, repeatType = ?, repeatEvery = ?, repeatCustomUnit = ?,
         repeatEndType = ?, repeatEnd = ?, repeatOccurrences = ?,
-        occurrencesGenerated = ?, lastGeneratedAt = ?, nextOccurrence = ?, parentTaskId = ?
+        occurrencesGenerated = ?, lastGeneratedAt = ?, nextOccurrence = ?, parentTaskId = ?,
+        repeatDays = ?, maxOccurrences = ?, currentOccurrences = ?, isRecurringActive = ?
        WHERE id = ?`,
       [
         task.title,

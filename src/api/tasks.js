@@ -134,3 +134,15 @@ export async function uploadTaskAttachments(taskId, files) {
 export async function deleteTaskAttachment(id) {
   return apiFetch(`${API_BASE_URL}/attachments/${id}`, { method: 'DELETE' })
 }
+
+export async function getTaskOccurrences(taskId) {
+  return apiFetch(`${API_BASE_URL}/tasks/${taskId}/occurrences`)
+}
+
+export async function stopTaskRecurrence(taskId, mode) {
+  return apiFetch(`${API_BASE_URL}/tasks/${taskId}/stop-recurrence`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode }),
+  })
+}

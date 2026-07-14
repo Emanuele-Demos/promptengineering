@@ -5,41 +5,35 @@ import type { Task, TaskRow } from '../types'
 import {
   computeNextOccurrenceDate,
   dueDateToNextOccurrenceIso,
+  parseRepeatDays,
+  serializeRepeatDays,
   shouldStopRecurrence,
   type RecurrenceFields,
 } from '../utils/recurrenceValidation'
 import { resolveReminderFields } from '../utils/reminderValidation'
 import { getAttachmentsByTaskId, addAttachment } from './attachmentService'
 
-interface RecurringTaskRow extends TaskRow {
-  isRecurring: number
-  repeatType: string | null
-  repeatEvery: number | null
-  repeatCustomUnit: string | null
-  repeatEndType: string | null
-  repeatEnd: string | null
-  repeatOccurrences: number | null
-  occurrencesGenerated: number | null
-  lastGeneratedAt: string | null
-  nextOccurrence: string | null
-  parentTaskId: string | null
-}
-
 const RECURRING_SELECT = `id, title, description, notes, status, priority, assigneeId, categoryId,
   dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
   isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
-  repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId`
+  repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
+  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive`
 
-function mapRecurrenceFromRow(row: RecurringTaskRow): RecurrenceFields {
+function mapRecurrenceFromRow(row: TaskRow): RecurrenceFields {
+  const current = row.currentOccurrences ?? row.occurrencesGenerated ?? 1
   return {
     isRecurring: Boolean(row.isRecurring),
+    isRecurringActive: Boolean(row.isRecurringActive ?? row.isRecurring),
     repeatType: (row.repeatType as RecurrenceFields['repeatType']) ?? null,
     repeatEvery: row.repeatEvery ?? 1,
     repeatCustomUnit: (row.repeatCustomUnit as RecurrenceFields['repeatCustomUnit']) ?? null,
+    repeatDays: parseRepeatDays(row.repeatDays),
     repeatEndType: (row.repeatEndType as RecurrenceFields['repeatEndType']) ?? 'never',
     repeatEnd: row.repeatEnd,
     repeatOccurrences: row.repeatOccurrences,
-    occurrencesGenerated: row.occurrencesGenerated ?? 1,
+    maxOccurrences: row.maxOccurrences,
+    occurrencesGenerated: current,
+    currentOccurrences: current,
     lastGeneratedAt: row.lastGeneratedAt,
     nextOccurrence: row.nextOccurrence,
     parentTaskId: row.parentTaskId,
@@ -68,30 +62,26 @@ async function copyAttachments(sourceTaskId: string, targetTaskId: string, db: D
   }
 }
 
-async function generateNextInstance(source: RecurringTaskRow, db: Database): Promise<boolean> {
+async function generateNextInstance(source: TaskRow, db: Database): Promise<boolean> {
   const recurrence = mapRecurrenceFromRow(source)
-  if (!recurrence.isRecurring || !recurrence.repeatType || !source.dueDate) return false
+  if (!recurrence.isRecurring || !recurrence.isRecurringActive || !recurrence.repeatType || !source.dueDate) {
+    return false
+  }
 
   const nextDueDate = computeNextOccurrenceDate(
     source.dueDate,
     recurrence.repeatType,
     recurrence.repeatEvery,
-    recurrence.repeatCustomUnit
+    recurrence.repeatCustomUnit,
+    recurrence.repeatDays
   )
 
-  const stop = shouldStopRecurrence(
-    {
-      repeatEndType: recurrence.repeatEndType,
-      repeatEnd: recurrence.repeatEnd,
-      repeatOccurrences: recurrence.repeatOccurrences,
-      occurrencesGenerated: recurrence.occurrencesGenerated,
-    },
-    nextDueDate
-  )
+  const stop = shouldStopRecurrence(recurrence, nextDueDate)
 
   const now = new Date().toISOString()
   const newId = randomUUID()
   const seriesRoot = source.parentTaskId ?? source.id
+  const nextCurrent = recurrence.currentOccurrences + 1
 
   const { reminderDate } = resolveReminderFields({
     dueDate: nextDueDate,
@@ -103,15 +93,13 @@ async function generateNextInstance(source: RecurringTaskRow, db: Database): Pro
 
   const newRecurrence: RecurrenceFields = {
     ...recurrence,
-    occurrencesGenerated: recurrence.occurrencesGenerated + 1,
+    currentOccurrences: nextCurrent,
+    occurrencesGenerated: nextCurrent,
     lastGeneratedAt: now,
-    nextOccurrence: dueDateToNextOccurrenceIso(nextDueDate),
+    nextOccurrence: stop ? null : dueDateToNextOccurrenceIso(nextDueDate),
     parentTaskId: seriesRoot,
     isRecurring: !stop,
-  }
-
-  if (stop) {
-    newRecurrence.nextOccurrence = null
+    isRecurringActive: !stop,
   }
 
   const tags = (await db.all(`SELECT tag FROM task_tags WHERE taskId = ?`, [source.id])) as {
@@ -121,31 +109,10 @@ async function generateNextInstance(source: RecurringTaskRow, db: Database): Pro
     link: string
   }[]
 
-  const newTask: Task = {
-    id: newId,
-    title: source.title,
-    description: source.description,
-    notes: source.notes,
-    noteItems: [],
-    links: links.map((l) => l.link),
-    attachments: [],
-    status: 'todo',
-    priority: source.priority as Task['priority'],
-    assigneeId: source.assigneeId,
-    categoryId: source.categoryId,
-    dueDate: nextDueDate,
-    reminderDate,
-    reminderType: source.reminderType as Task['reminderType'],
-    tags: tags.map((t) => t.tag),
-    createdAt: now,
-    updatedAt: now,
-    ...newRecurrence,
-  }
-
   await db.run('BEGIN')
   try {
     await db.run(
-      `UPDATE tasks SET status = 'done', isRecurring = 0, nextOccurrence = NULL, updatedAt = ? WHERE id = ?`,
+      `UPDATE tasks SET status = 'done', isRecurring = 0, isRecurringActive = 0, nextOccurrence = NULL, updatedAt = ? WHERE id = ?`,
       [now, source.id]
     )
 
@@ -154,23 +121,24 @@ async function generateNextInstance(source: RecurringTaskRow, db: Database): Pro
         id, title, description, notes, status, priority, assigneeId, categoryId,
         dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
         isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
-        repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
+        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        newTask.id,
-        newTask.title,
-        newTask.description,
-        newTask.notes,
-        newTask.status,
-        newTask.priority,
-        newTask.assigneeId,
-        newTask.categoryId,
-        newTask.dueDate,
-        newTask.reminderDate,
-        newTask.reminderType,
+        newId,
+        source.title,
+        source.description,
+        source.notes,
+        'todo',
+        source.priority,
+        source.assigneeId,
+        source.categoryId,
+        nextDueDate,
+        reminderDate,
+        source.reminderType,
         null,
-        newTask.createdAt,
-        newTask.updatedAt,
+        now,
+        now,
         newRecurrence.isRecurring ? 1 : 0,
         newRecurrence.repeatType,
         newRecurrence.repeatEvery,
@@ -178,22 +146,25 @@ async function generateNextInstance(source: RecurringTaskRow, db: Database): Pro
         newRecurrence.repeatEndType,
         newRecurrence.repeatEnd,
         newRecurrence.repeatOccurrences,
-        newRecurrence.occurrencesGenerated,
-        newRecurrence.lastGeneratedAt,
+        nextCurrent,
+        now,
         newRecurrence.nextOccurrence,
-        newRecurrence.parentTaskId,
+        seriesRoot,
+        serializeRepeatDays(newRecurrence.repeatDays),
+        newRecurrence.maxOccurrences,
+        nextCurrent,
+        newRecurrence.isRecurringActive ? 1 : 0,
       ]
     )
 
-    for (const tag of newTask.tags) {
-      await db.run(`INSERT INTO task_tags (taskId, tag) VALUES (?, ?)`, [newTask.id, tag])
+    for (const tag of tags) {
+      await db.run(`INSERT INTO task_tags (taskId, tag) VALUES (?, ?)`, [newId, tag.tag])
     }
-    for (const link of newTask.links) {
-      await db.run(`INSERT INTO task_links (taskId, link) VALUES (?, ?)`, [newTask.id, link])
+    for (const link of links) {
+      await db.run(`INSERT INTO task_links (taskId, link) VALUES (?, ?)`, [newId, link.link])
     }
 
-    await copyAttachments(source.id, newTask.id, db)
-
+    await copyAttachments(source.id, newId, db)
     await db.run('COMMIT')
     return true
   } catch (error) {
@@ -210,17 +181,18 @@ export async function processDueRecurrences(db?: Database): Promise<number> {
     `SELECT ${RECURRING_SELECT}
      FROM tasks
      WHERE isRecurring = 1
+       AND isRecurringActive = 1
        AND nextOccurrence IS NOT NULL
        AND nextOccurrence <= ?
        AND status != 'done'`,
     [now]
-  )) as RecurringTaskRow[]
+  )) as TaskRow[]
 
   let processed = 0
 
   for (const row of dueTasks) {
-    const fresh = await connection.get<RecurringTaskRow>(
-      `SELECT ${RECURRING_SELECT} FROM tasks WHERE id = ? AND isRecurring = 1`,
+    const fresh = await connection.get<TaskRow>(
+      `SELECT ${RECURRING_SELECT} FROM tasks WHERE id = ? AND isRecurring = 1 AND isRecurringActive = 1`,
       [row.id]
     )
     if (!fresh || !fresh.nextOccurrence || fresh.nextOccurrence > now) continue

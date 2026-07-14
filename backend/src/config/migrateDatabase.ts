@@ -118,6 +118,25 @@ export async function runMigrations(db: Database): Promise<void> {
     }
   }
 
+  const advancedRecurrenceColumns: [string, string][] = [
+    ['repeatDays', "TEXT DEFAULT '[]'"],
+    ['maxOccurrences', 'INTEGER'],
+    ['currentOccurrences', 'INTEGER DEFAULT 0'],
+    ['isRecurringActive', 'INTEGER NOT NULL DEFAULT 1'],
+  ]
+
+  for (const [column, definition] of advancedRecurrenceColumns) {
+    if (!(await columnExists(db, 'tasks', column))) {
+      await db.exec(`ALTER TABLE tasks ADD COLUMN ${column} ${definition}`)
+    }
+  }
+
+  if (await columnExists(db, 'tasks', 'occurrencesGenerated')) {
+    await db.exec(
+      `UPDATE tasks SET currentOccurrences = occurrencesGenerated WHERE currentOccurrences IS NULL OR currentOccurrences = 0`
+    )
+  }
+
   const notificationsTable = (await db.all(
     `SELECT name FROM sqlite_master WHERE type='table' AND name='notifications'`
   )) as { name: string }[]

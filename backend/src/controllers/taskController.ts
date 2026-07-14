@@ -14,6 +14,11 @@ import {
   isRepeatCustomUnit,
   resolveRecurrenceFields,
 } from '../utils/recurrenceValidation'
+import {
+  getTaskOccurrences,
+  stopTaskRecurrence,
+  type StopRecurrenceMode,
+} from '../services/occurrenceService'
 
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
@@ -75,11 +80,23 @@ function buildTaskPayload(
   const rawCustomUnit = body.repeatCustomUnit ?? existing?.repeatCustomUnit ?? 'days'
   const repeatCustomUnit = isRepeatCustomUnit(rawCustomUnit) ? rawCustomUnit : 'days'
 
+  const maxOccurrences =
+    body.maxOccurrences !== undefined
+      ? body.maxOccurrences != null
+        ? parsePositiveInt(body.maxOccurrences, 1)
+        : null
+      : (existing?.maxOccurrences ?? null)
+
   const recurrence = resolveRecurrenceFields({
     isRecurring,
+    isRecurringActive:
+      body.isRecurringActive !== undefined
+        ? parseBoolean(body.isRecurringActive, true)
+        : (existing?.isRecurringActive ?? true),
     repeatType: isRecurring ? repeatType : null,
     repeatEvery: parsePositiveInt(body.repeatEvery, existing?.repeatEvery ?? 1),
     repeatCustomUnit: isRecurring && repeatType === 'custom' ? repeatCustomUnit : null,
+    repeatDays: body.repeatDays ?? existing?.repeatDays ?? [],
     repeatEndType: isRecurring ? repeatEndType : 'never',
     repeatEnd:
       body.repeatEnd !== undefined
@@ -91,16 +108,21 @@ function buildTaskPayload(
           ? parsePositiveInt(body.repeatOccurrences, 1)
           : null
         : (existing?.repeatOccurrences ?? null),
+    maxOccurrences,
     dueDate,
     existing: existing
       ? {
+          isRecurringActive: existing.isRecurringActive,
           repeatType: existing.repeatType,
           repeatEvery: existing.repeatEvery,
           repeatCustomUnit: existing.repeatCustomUnit,
+          repeatDays: existing.repeatDays,
           repeatEndType: existing.repeatEndType,
           repeatEnd: existing.repeatEnd,
           repeatOccurrences: existing.repeatOccurrences,
+          maxOccurrences: existing.maxOccurrences,
           occurrencesGenerated: existing.occurrencesGenerated,
+          currentOccurrences: existing.currentOccurrences,
           lastGeneratedAt: existing.lastGeneratedAt,
           parentTaskId: existing.parentTaskId,
         }
@@ -159,6 +181,7 @@ export async function createTask(req: Request, res: Response): Promise<void> {
     createdAt: now,
     updatedAt: now,
     occurrencesGenerated: payload.isRecurring ? 1 : 0,
+    currentOccurrences: payload.isRecurring ? 1 : 0,
   }
 
   const saved = await taskService.upsertTask(task, { resetReminderSent: reminderChanged })
@@ -197,4 +220,32 @@ export async function deleteTask(req: Request, res: Response): Promise<void> {
 
   await taskService.deleteTask(id)
   res.json({ message: 'Task eliminato' })
+}
+
+export async function getOccurrences(req: Request, res: Response): Promise<void> {
+  const id = getParam(req.params.id)
+  const task = await taskService.getTaskById(id)
+  if (!task) {
+    res.status(404).json({ message: 'Task non trovato' })
+    return
+  }
+  if (!task.isRecurring) {
+    res.status(400).json({ message: 'Il task non è ricorrente' })
+    return
+  }
+  const occurrences = await getTaskOccurrences(id)
+  res.json(occurrences)
+}
+
+const STOP_MODES: StopRecurrenceMode[] = ['from_today', 'after_last', 'delete_future']
+
+export async function stopRecurrence(req: Request, res: Response): Promise<void> {
+  const id = getParam(req.params.id)
+  const mode = (req.body as { mode?: string }).mode
+  if (!mode || !STOP_MODES.includes(mode as StopRecurrenceMode)) {
+    res.status(400).json({ message: 'Modalità di interruzione non valida' })
+    return
+  }
+  const task = await stopTaskRecurrence(id, mode as StopRecurrenceMode)
+  res.json(task)
 }

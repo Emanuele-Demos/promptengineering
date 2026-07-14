@@ -69,6 +69,25 @@ export type ReminderType = 'none' | '5m' | '30m' | '1h' | '1d' | 'custom'
 export type RepeatType = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
 export type RepeatCustomUnit = 'hours' | 'days' | 'weeks' | 'months' | 'years'
 export type RepeatEndType = 'never' | 'occurrences' | 'date'
+export type RepeatDay =
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+  | 'sunday'
+
+export type OccurrenceStatus = 'scheduled' | 'completed' | 'cancelled'
+
+export interface TaskOccurrence {
+  date: string
+  time: string | null
+  status: OccurrenceStatus
+  sequence: number
+}
+
+export type StopRecurrenceMode = 'from_today' | 'after_last' | 'delete_future'
 
 export interface Notification {
   id: string
@@ -125,13 +144,17 @@ export interface Task {
   reminderDate: string | null
   reminderType: ReminderType | null
   isRecurring?: boolean
+  isRecurringActive?: boolean
   repeatType?: RepeatType | null
   repeatEvery?: number
   repeatCustomUnit?: RepeatCustomUnit | null
+  repeatDays?: RepeatDay[]
   repeatEndType?: RepeatEndType
   repeatEnd?: string | null
   repeatOccurrences?: number | null
+  maxOccurrences?: number | null
   occurrencesGenerated?: number
+  currentOccurrences?: number
   lastGeneratedAt?: string | null
   nextOccurrence?: string | null
   parentTaskId?: string | null
@@ -175,6 +198,26 @@ export const REPEAT_END_TYPE_LABELS: Record<RepeatEndType, string> = {
   occurrences: 'Dopo N occorrenze',
   date: 'Fino a una data',
 }
+
+export const REPEAT_DAY_LABELS: Record<RepeatDay, string> = {
+  monday: 'Lun',
+  tuesday: 'Mar',
+  wednesday: 'Mer',
+  thursday: 'Gio',
+  friday: 'Ven',
+  saturday: 'Sab',
+  sunday: 'Dom',
+}
+
+export const REPEAT_DAYS: RepeatDay[] = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+]
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: 'Da fare',

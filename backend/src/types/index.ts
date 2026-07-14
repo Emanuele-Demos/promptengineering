@@ -57,6 +57,14 @@ export type ReminderType = 'none' | '5m' | '30m' | '1h' | '1d' | 'custom'
 export type RepeatType = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
 export type RepeatCustomUnit = 'hours' | 'days' | 'weeks' | 'months' | 'years'
 export type RepeatEndType = 'never' | 'occurrences' | 'date'
+export type RepeatDay =
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+  | 'sunday'
 
 export interface Notification {
   id: string
@@ -107,13 +115,17 @@ export interface Task {
   reminderDate: string | null
   reminderType: ReminderType | null
   isRecurring?: boolean
+  isRecurringActive?: boolean
   repeatType?: RepeatType | null
   repeatEvery?: number
   repeatCustomUnit?: RepeatCustomUnit | null
+  repeatDays?: RepeatDay[]
   repeatEndType?: RepeatEndType
   repeatEnd?: string | null
   repeatOccurrences?: number | null
+  maxOccurrences?: number | null
   occurrencesGenerated?: number
+  currentOccurrences?: number
   lastGeneratedAt?: string | null
   nextOccurrence?: string | null
   parentTaskId?: string | null
@@ -151,6 +163,10 @@ interface TaskRow {
   lastGeneratedAt: string | null
   nextOccurrence: string | null
   parentTaskId: string | null
+  repeatDays: string | null
+  maxOccurrences: number | null
+  currentOccurrences: number | null
+  isRecurringActive: number | null
   createdAt: string
   updatedAt: string
 }

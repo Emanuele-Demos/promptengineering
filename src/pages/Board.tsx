@@ -16,19 +16,29 @@ export function Board() {
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('todo')
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [favoriteFilter, setFavoriteFilter] = useState<'all' | 'favorites'>('all')
   const [draggingId, setDraggingId] = useState<string | null>(null)
 
-  const filteredTasks = tasks.filter((t) => {
-    const matchesSearch =
-      t.title.toLowerCase().includes(search.toLowerCase()) ||
-      t.description.toLowerCase().includes(search.toLowerCase()) ||
-      t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
+  const filteredTasks = tasks
+    .filter((t) => {
+      const matchesSearch =
+        t.title.toLowerCase().includes(search.toLowerCase()) ||
+        t.description.toLowerCase().includes(search.toLowerCase()) ||
+        t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
 
-    const matchesCategory =
-      !categoryFilter || (t.categoryId ?? null) === categoryFilter
+      const matchesCategory =
+        !categoryFilter || (t.categoryId ?? null) === categoryFilter
 
-    return matchesSearch && matchesCategory
-  })
+      const matchesFavorite =
+        favoriteFilter === 'favorites' ? Boolean(t.favorite) : true
+
+      return matchesSearch && matchesCategory && matchesFavorite
+    })
+    .sort((a, b) => {
+      if (favoriteFilter === 'favorites') return 0
+      if (Boolean(a.favorite) === Boolean(b.favorite)) return 0
+      return a.favorite ? -1 : 1
+    })
 
   const openCreate = (status: TaskStatus) => {
     setSelectedTask(null)
@@ -68,6 +78,15 @@ export function Board() {
               className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
+          <select
+            value={favoriteFilter}
+            onChange={(e) => setFavoriteFilter(e.target.value as 'all' | 'favorites')}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white min-w-[10rem]"
+            aria-label="Filtra preferiti"
+          >
+            <option value="all">Tutti i task</option>
+            <option value="favorites">Solo preferiti</option>
+          </select>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}

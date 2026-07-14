@@ -26,5 +26,20 @@ export function validateTaskBody(
     return
   }
 
+  const { favorite } = req.body
+  if (
+    favorite !== undefined &&
+    typeof favorite !== 'boolean' &&
+    favorite !== 'true' &&
+    favorite !== 'false' &&
+    favorite !== 0 &&
+    favorite !== 1 &&
+    favorite !== '0' &&
+    favorite !== '1'
+  ) {
+    res.status(400).json({ message: 'Il campo favorite deve essere booleano' })
+    return
+  }
+
   next()
 }

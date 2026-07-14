@@ -4,6 +4,14 @@ export const API_ORIGIN = API_BASE_URL.replace(/\/api$/, '')
 const NETWORK_ERROR =
   'Impossibile contattare il server. Avvia il backend con: cd backend && npm run dev'
 
+function getUserId() {
+  return localStorage.getItem('teamflow-user-id') || 'm1'
+}
+
+function authHeaders(extra = {}) {
+  return { 'X-User-Id': getUserId(), ...extra }
+}
+
 async function handleResponse(response) {
   let data = {}
   try {
@@ -46,7 +54,9 @@ export function getAttachmentOpenUrl(id) {
 export async function syncTaskStatus(taskId, status) {
   let response
   try {
-    response = await fetch(`${API_BASE_URL}/tasks/${taskId}`)
+    response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+      headers: authHeaders(),
+    })
   } catch {
     throw new Error(NETWORK_ERROR)
   }
@@ -55,12 +65,49 @@ export async function syncTaskStatus(taskId, status) {
     const existing = await response.json()
     return apiFetch(`${API_BASE_URL}/tasks/${taskId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ ...existing, status }),
     })
   }
 
   return null
+}
+
+export async function syncTaskFavorite(taskId, favorite) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+      headers: authHeaders(),
+    })
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  if (response.ok) {
+    const existing = await response.json()
+    return apiFetch(`${API_BASE_URL}/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ ...existing, favorite }),
+    })
+  }
+
+  return null
+}
+
+export async function getFavoriteTasks() {
+  return apiFetch(`${API_BASE_URL}/tasks/favorites`, {
+    headers: authHeaders(),
+  })
+}
+
+export async function getTasks(params = {}) {
+  const search = new URLSearchParams()
+  if (params.favorite === true) search.set('favorite', 'true')
+  if (params.assigneeId) search.set('assigneeId', params.assigneeId)
+  const query = search.toString()
+  const url = query ? `${API_BASE_URL}/tasks?${query}` : `${API_BASE_URL}/tasks`
+  return apiFetch(url, { headers: authHeaders() })
 }
 
 export async function upsertTask(task) {

@@ -2,6 +2,12 @@ export function getFileUrl(path: string): string
 export function getAttachmentDownloadUrl(id: string): string
 export function getAttachmentOpenUrl(id: string): string
 export function syncTaskStatus(taskId: string, status: string): Promise<unknown>
+export function syncTaskFavorite(taskId: string, favorite: boolean): Promise<unknown>
+export function getFavoriteTasks(): Promise<unknown[]>
+export function getTasks(params?: {
+  favorite?: boolean
+  assigneeId?: string
+}): Promise<unknown[]>
 export function upsertTask(task: Record<string, unknown>): Promise<unknown>
 export function getTaskNotes(taskId: string): Promise<unknown[]>
 export function createTaskNote(taskId: string, content: string): Promise<unknown>

@@ -16,7 +16,7 @@ import type {
   TeamMember,
 } from '../types'
 import { MEMBER_COLORS } from '../types'
-import { syncTaskStatus } from '../api/tasks.js'
+import { syncTaskStatus, syncTaskFavorite } from '../api/tasks.js'
 
 const STORAGE_KEY = 'teamflow-data'
 
@@ -39,6 +39,7 @@ interface AppContextValue extends AppState {
   updateTask: (id: string, updates: Partial<Task>) => void
   deleteTask: (id: string) => void
   moveTask: (id: string, status: TaskStatus) => void
+  toggleFavorite: (id: string) => void
   addMember: (member: Omit<TeamMember, 'id' | 'color'>) => void
   updateMember: (id: string, updates: Partial<TeamMember>) => void
   deleteMember: (id: string) => void
@@ -117,6 +118,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       syncTaskStatus(id, status).catch(() => {})
     },
     [updateTask],
+  )
+
+  const toggleFavorite = useCallback(
+    (id: string) => {
+      commit((prev) => {
+        const task = prev.tasks.find((t) => t.id === id)
+        if (!task) return prev
+
+        const favorite = !Boolean(task.favorite)
+        syncTaskFavorite(id, favorite).catch(() => {})
+
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) =>
+            t.id === id
+              ? { ...t, favorite, updatedAt: new Date().toISOString() }
+              : t,
+          ),
+        }
+      })
+    },
+    [commit],
   )
 
   const addMember = useCallback(
@@ -217,6 +240,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateTask,
       deleteTask,
       moveTask,
+      toggleFavorite,
       addMember,
       updateMember,
       deleteMember,
@@ -232,6 +256,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateTask,
       deleteTask,
       moveTask,
+      toggleFavorite,
       addMember,
       updateMember,
       deleteMember,

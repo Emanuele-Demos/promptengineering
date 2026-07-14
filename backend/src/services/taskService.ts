@@ -12,7 +12,7 @@ const TASK_SELECT = `id, title, description, notes, status, priority, assigneeId
   dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
   isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
   repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
-  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive`
+  repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite`
 
 function mapRecurrenceToTask(row: TaskRow) {
   return {
@@ -59,10 +59,11 @@ export async function buildTaskFromRow(row: TaskRow, db: Database): Promise<Task
     row.categoryId ? getCategoryById(row.categoryId, db) : Promise.resolve(undefined),
   ])
 
-  const { reminderSentAt: _sent, isRecurring: _ir, ...taskBase } = row
+  const { reminderSentAt: _sent, isRecurring: _ir, favorite: fav, ...taskBase } = row
 
   return {
     ...taskBase,
+    favorite: Boolean(fav),
     reminderType: (row.reminderType as ReminderType | null) ?? null,
     ...mapRecurrenceToTask(row),
     tags,
@@ -127,11 +128,28 @@ function recurrenceInsertValues(
   ]
 }
 
-export async function getAllTasks(db?: Database): Promise<Task[]> {
+export async function getAllTasks(
+  options?: { favorite?: boolean; assigneeId?: string },
+  db?: Database
+): Promise<Task[]> {
   const connection = db ?? (await getDatabase())
-  const rows = (await connection.all(
-    `SELECT ${TASK_SELECT} FROM tasks ORDER BY createdAt DESC`
-  )) as TaskRow[]
+  let query = `SELECT ${TASK_SELECT} FROM tasks WHERE 1=1`
+  const params: string[] = []
+
+  if (options?.favorite === true) {
+    query += ` AND favorite = 1`
+  } else if (options?.favorite === false) {
+    query += ` AND (favorite = 0 OR favorite IS NULL)`
+  }
+
+  if (options?.assigneeId) {
+    query += ` AND assigneeId = ?`
+    params.push(options.assigneeId)
+  }
+
+  query += ` ORDER BY favorite DESC, createdAt DESC`
+
+  const rows = (await connection.all(query, params)) as TaskRow[]
 
   return Promise.all(rows.map((row) => buildTaskFromRow(row, connection)))
 }
@@ -165,8 +183,8 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt,
         isRecurring, repeatType, repeatEvery, repeatCustomUnit, repeatEndType, repeatEnd,
         repeatOccurrences, occurrencesGenerated, lastGeneratedAt, nextOccurrence, parentTaskId,
-        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        repeatDays, maxOccurrences, currentOccurrences, isRecurringActive, favorite
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         task.id,
         task.title,
@@ -184,6 +202,7 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         task.createdAt,
         task.updatedAt,
         ...recurrenceInsertValues(task),
+        task.favorite ? 1 : 0,
       ]
     )
 
@@ -222,6 +241,7 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         lastGeneratedAt: task.lastGeneratedAt ?? null,
         nextOccurrence: task.nextOccurrence ?? null,
         parentTaskId: task.parentTaskId ?? null,
+        favorite: task.favorite ? 1 : 0,
       },
       connection
     )
@@ -265,7 +285,8 @@ export async function updateTask(
         isRecurring = ?, repeatType = ?, repeatEvery = ?, repeatCustomUnit = ?,
         repeatEndType = ?, repeatEnd = ?, repeatOccurrences = ?,
         occurrencesGenerated = ?, lastGeneratedAt = ?, nextOccurrence = ?, parentTaskId = ?,
-        repeatDays = ?, maxOccurrences = ?, currentOccurrences = ?, isRecurringActive = ?
+        repeatDays = ?, maxOccurrences = ?, currentOccurrences = ?, isRecurringActive = ?,
+        favorite = ?
        WHERE id = ?`,
       [
         task.title,
@@ -282,6 +303,7 @@ export async function updateTask(
         reminderSentAt,
         task.updatedAt,
         ...recurrenceInsertValues(task),
+        task.favorite ? 1 : 0,
         id,
       ]
     )

@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto'
 import type { Task } from '../types'
 import * as taskService from '../services/taskService'
 import { getParam } from '../utils/params'
+import { getUserId } from '../middleware/userContext'
 import {
   isReminderType,
   resolveReminderFields,
@@ -23,6 +24,13 @@ import {
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return value.filter((item): item is string => typeof item === 'string')
+}
+
+function parseBooleanStrict(value: unknown): boolean | null {
+  if (typeof value === 'boolean') return value
+  if (value === 1 || value === '1' || value === 'true') return true
+  if (value === 0 || value === '0' || value === 'false') return false
+  return null
 }
 
 function parseBoolean(value: unknown, fallback = false): boolean {
@@ -148,6 +156,10 @@ function buildTaskPayload(
       body.projectId !== undefined
         ? ((body.projectId as string | null) || null)
         : (existing?.projectId ?? null),
+    favorite:
+      body.favorite !== undefined
+        ? (parseBooleanStrict(body.favorite) ?? existing?.favorite ?? false)
+        : (existing?.favorite ?? false),
     dueDate,
     reminderDate,
     reminderType: reminderType === 'none' ? null : reminderType,
@@ -159,8 +171,36 @@ function buildTaskPayload(
   }
 }
 
-export async function getTasks(_req: Request, res: Response): Promise<void> {
-  const tasks = await taskService.getAllTasks()
+function assertTaskOwner(task: Task, userId: string, res: Response): boolean {
+  if (task.assigneeId && task.assigneeId !== userId) {
+    res.status(403).json({ message: 'Non autorizzato a modificare questo task' })
+    return false
+  }
+  return true
+}
+
+function parseFavoriteQuery(value: unknown): boolean | undefined {
+  if (value === 'true') return true
+  if (value === 'false') return false
+  return undefined
+}
+
+export async function getTasks(req: Request, res: Response): Promise<void> {
+  const favorite = parseFavoriteQuery(req.query.favorite)
+  const userId = getUserId(req)
+  const assigneeId =
+    typeof req.query.assigneeId === 'string' ? req.query.assigneeId : undefined
+
+  const tasks = await taskService.getAllTasks({
+    favorite,
+    assigneeId: favorite === true ? assigneeId || userId : assigneeId,
+  })
+  res.json(tasks)
+}
+
+export async function getFavoriteTasks(req: Request, res: Response): Promise<void> {
+  const userId = getUserId(req)
+  const tasks = await taskService.getAllTasks({ favorite: true, assigneeId: userId })
   res.json(tasks)
 }
 
@@ -175,6 +215,11 @@ export async function getTask(req: Request, res: Response): Promise<void> {
 
 export async function createTask(req: Request, res: Response): Promise<void> {
   const body = req.body as Record<string, unknown>
+  if (body.favorite !== undefined && parseBooleanStrict(body.favorite) === null) {
+    res.status(400).json({ message: 'Il campo favorite deve essere booleano' })
+    return
+  }
+
   const { reminderChanged, ...payload } = buildTaskPayload(body)
   const now = new Date().toISOString()
   const task: Task = {
@@ -200,7 +245,16 @@ export async function updateTask(req: Request, res: Response): Promise<void> {
     return
   }
 
-  const { reminderChanged, ...payload } = buildTaskPayload(req.body, existing)
+  const userId = getUserId(req)
+  if (!assertTaskOwner(existing, userId, res)) return
+
+  const body = req.body as Record<string, unknown>
+  if (body.favorite !== undefined && parseBooleanStrict(body.favorite) === null) {
+    res.status(400).json({ message: 'Il campo favorite deve essere booleano' })
+    return
+  }
+
+  const { reminderChanged, ...payload } = buildTaskPayload(body, existing)
   const dueDateChanged =
     req.body.dueDate !== undefined && payload.dueDate !== existing.dueDate
   const shouldResetReminder = Boolean(
@@ -221,6 +275,9 @@ export async function deleteTask(req: Request, res: Response): Promise<void> {
     res.status(404).json({ message: 'Task non trovato' })
     return
   }
+
+  const userId = getUserId(req)
+  if (!assertTaskOwner(existing, userId, res)) return
 
   await taskService.deleteTask(id)
   res.json({ message: 'Task eliminato' })

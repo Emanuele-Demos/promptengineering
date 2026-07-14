@@ -185,6 +185,7 @@ export interface Task {
   lastGeneratedAt?: string | null
   nextOccurrence?: string | null
   parentTaskId?: string | null
+  favorite?: boolean
   tags: string[]
   createdAt: string
   updatedAt: string

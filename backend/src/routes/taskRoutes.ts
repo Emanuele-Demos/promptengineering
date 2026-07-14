@@ -6,6 +6,7 @@ import * as taskController from '../controllers/taskController'
 const router = Router()
 
 router.get('/', asyncHandler(taskController.getTasks))
+router.get('/favorites', asyncHandler(taskController.getFavoriteTasks))
 router.get('/:id/occurrences', asyncHandler(taskController.getOccurrences))
 router.put('/:id/stop-recurrence', asyncHandler(taskController.stopRecurrence))
 router.get('/:id', asyncHandler(taskController.getTask))

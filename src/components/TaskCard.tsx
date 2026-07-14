@@ -1,4 +1,4 @@
-import { Calendar, GripVertical, Paperclip, Repeat } from 'lucide-react'
+import { Calendar, GripVertical, Paperclip, Repeat, Star } from 'lucide-react'
 import type { Task, Category } from '../types'
 import { useApp } from '../store/AppContext'
 import { formatDate, isOverdue } from '../utils/helpers'
@@ -22,8 +22,9 @@ export function TaskCard({
   onDragStart,
   category,
 }: TaskCardProps) {
-  const { getMember } = useApp()
+  const { getMember, toggleFavorite } = useApp()
   const assignee = getMember(task.assigneeId)
+  const isFavorite = Boolean(task.favorite)
   const overdue = isOverdue(task.dueDate, task.status)
   const recurrenceSummary = task.isRecurring ? formatRecurrenceSummary(task) : ''
   const nextOccurrenceLabel = task.isRecurring ? formatNextOccurrence(task.nextOccurrence) : null
@@ -41,6 +42,22 @@ export function TaskCard({
         )}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleFavorite(task.id)
+              }}
+              className={`shrink-0 p-0.5 rounded transition-all duration-200 hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                isFavorite ? 'text-amber-400' : 'text-slate-300 hover:text-amber-300'
+              }`}
+              aria-label={isFavorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+              title={isFavorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+            >
+              <Star
+                className={`w-4 h-4 transition-transform duration-200 ${isFavorite ? 'fill-current scale-105' : ''}`}
+              />
+            </button>
             {task.isRecurring && (
               <Repeat className="w-3.5 h-3.5 text-indigo-500 shrink-0" aria-hidden />
             )}

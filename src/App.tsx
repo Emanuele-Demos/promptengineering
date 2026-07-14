@@ -6,6 +6,7 @@ import { Board } from "./pages/Board";
 import { Team } from "./pages/Team";
 import { GestioneStato } from "./pages/GestioneStato";
 import { GestioneCategorie } from "./pages/GestioneCategorie";
+import { CentroNotifiche } from "./pages/CentroNotifiche";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="team" element={<Team />} />
             <Route path="gestione_stato" element={<GestioneStato />} />
             <Route path="gestione_categorie" element={<GestioneCategorie />} />
+            <Route path="notifiche" element={<CentroNotifiche />} />
           </Route>
         </Routes>
       </AppProvider>

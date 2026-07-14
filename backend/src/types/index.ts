@@ -17,6 +17,19 @@ export interface TaskNote {
   updatedAt: string
 }
 
+export type ReminderType = 'none' | '5m' | '30m' | '1h' | '1d' | 'custom'
+
+export interface Notification {
+  id: string
+  userId: string
+  taskId: string
+  title: string
+  message: string
+  isRead: boolean
+  createdAt: string
+  readAt: string | null
+}
+
 export interface Category {
   id: string
   name: string
@@ -52,6 +65,8 @@ export interface Task {
   categoryId: string | null
   category?: Category | null
   dueDate: string | null
+  reminderDate: string | null
+  reminderType: ReminderType | null
   tags: string[]
   createdAt: string
   updatedAt: string
@@ -72,6 +87,9 @@ interface TaskRow {
   assigneeId: string | null
   categoryId: string | null
   dueDate: string | null
+  reminderDate: string | null
+  reminderType: string | null
+  reminderSentAt: string | null
   createdAt: string
   updatedAt: string
 }

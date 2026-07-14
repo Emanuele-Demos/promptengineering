@@ -9,6 +9,19 @@ export interface TeamMember {
   color: string
 }
 
+export type ReminderType = 'none' | '5m' | '30m' | '1h' | '1d' | 'custom'
+
+export interface Notification {
+  id: string
+  userId: string
+  taskId: string
+  title: string
+  message: string
+  isRead: boolean
+  createdAt: string
+  readAt: string | null
+}
+
 export interface Category {
   id: string
   name: string
@@ -50,6 +63,8 @@ export interface Task {
   assigneeId: string | null
   categoryId: string | null
   dueDate: string | null
+  reminderDate: string | null
+  reminderType: ReminderType | null
   tags: string[]
   createdAt: string
   updatedAt: string
@@ -58,6 +73,15 @@ export interface Task {
 export interface AppState {
   members: TeamMember[]
   tasks: Task[]
+}
+
+export const REMINDER_LABELS: Record<ReminderType, string> = {
+  none: 'Nessun promemoria',
+  '5m': '5 minuti prima',
+  '30m': '30 minuti prima',
+  '1h': '1 ora prima',
+  '1d': '1 giorno prima',
+  custom: 'Personalizzato',
 }
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {

@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS tasks (
     assigneeId TEXT,
     categoryId TEXT,
     dueDate TEXT,
+    reminderDate TEXT,
+    reminderType TEXT,
+    reminderSentAt TEXT,
     createdAt TEXT NOT NULL,
     updatedAt TEXT NOT NULL,
     FOREIGN KEY (assigneeId) REFERENCES members(id) ON DELETE SET NULL,
@@ -71,4 +74,17 @@ CREATE TABLE IF NOT EXISTS task_links (
 CREATE TABLE IF NOT EXISTS stato (
     slug TEXT PRIMARY KEY,
     valore_stato TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    taskId TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    isRead INTEGER NOT NULL DEFAULT 0,
+    createdAt TEXT NOT NULL,
+    readAt TEXT,
+    FOREIGN KEY (userId) REFERENCES members(id) ON DELETE CASCADE,
+    FOREIGN KEY (taskId) REFERENCES tasks(id) ON DELETE CASCADE
 );

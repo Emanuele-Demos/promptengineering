@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
-import type { Task, TaskPriority, TaskStatus } from '../types'
-import { PRIORITY_LABELS, STATUS_LABELS } from '../types'
+import type { Task, TaskPriority, TaskStatus, ReminderType } from '../types'
+import { PRIORITY_LABELS, REMINDER_LABELS, STATUS_LABELS } from '../types'
 import { useApp } from '../store/AppContext'
 import { upsertTask } from '../api/tasks.js'
+import { setCurrentUserId } from '../api/notifications.js'
 import { useCategories } from '../hooks/useCategories'
+import {
+  fromDatetimeLocalValue,
+  toDatetimeLocalValue,
+  validateReminderClient,
+} from '../utils/reminder'
 import { TaskNotesSection } from './TaskNotesSection'
 import { TaskAttachmentsSection } from './TaskAttachmentsSection'
 
@@ -26,6 +32,8 @@ const emptyForm = {
   dueDate: '',
   tags: '',
   categoryId: '',
+  reminderType: 'none' as ReminderType,
+  customReminderAt: '',
 }
 
 export function TaskModal({
@@ -40,6 +48,8 @@ export function TaskModal({
 
   const [form, setForm] = useState(emptyForm)
   const [syncError, setSyncError] = useState('')
+  const [reminderError, setReminderError] = useState('')
+  const [reminderSaved, setReminderSaved] = useState('')
 
   useEffect(() => {
     if (task) {
@@ -54,31 +64,46 @@ export function TaskModal({
         dueDate: task.dueDate ?? '',
         tags: task.tags.join(', '),
         categoryId: task.categoryId ?? '',
+        reminderType: (task.reminderType ?? 'none') as ReminderType,
+        customReminderAt:
+          task.reminderType === 'custom' ? toDatetimeLocalValue(task.reminderDate) : '',
       })
     } else {
       setForm({ ...emptyForm, status: defaultStatus })
     }
     setSyncError('')
+    setReminderError('')
+    setReminderSaved('')
   }, [task, defaultStatus, open])
 
   if (!open) return null
 
-  const buildPayload = (taskId: string, createdAt: string) => ({
-    id: taskId,
-    title: form.title.trim(),
-    description: form.description.trim(),
-    notes: form.notes.trim(),
-    links: form.links.split(',').map((l) => l.trim()).filter(Boolean),
-    attachments: [],
-    status: form.status,
-    priority: form.priority,
-    assigneeId: form.assigneeId || null,
-    categoryId: form.categoryId || null,
-    dueDate: form.dueDate || null,
-    tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
-    createdAt,
-    updatedAt: new Date().toISOString(),
-  })
+  const buildPayload = (taskId: string, createdAt: string) => {
+    const reminderType = form.reminderType
+    const reminderDate =
+      reminderType === 'custom'
+        ? fromDatetimeLocalValue(form.customReminderAt)
+        : null
+
+    return {
+      id: taskId,
+      title: form.title.trim(),
+      description: form.description.trim(),
+      notes: form.notes.trim(),
+      links: form.links.split(',').map((l) => l.trim()).filter(Boolean),
+      attachments: [],
+      status: form.status,
+      priority: form.priority,
+      assigneeId: form.assigneeId || null,
+      categoryId: form.categoryId || null,
+      dueDate: form.dueDate || null,
+      reminderType: reminderType === 'none' ? null : reminderType,
+      reminderDate,
+      tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+      createdAt,
+      updatedAt: new Date().toISOString(),
+    }
+  }
 
   const syncToBackend = async (payload: ReturnType<typeof buildPayload>) => {
     try {
@@ -93,6 +118,20 @@ export function TaskModal({
     e.preventDefault()
     if (!form.title.trim()) return
 
+    const validationMsg =   validateReminderClient(
+      form.dueDate || null,
+      form.reminderType,
+      form.customReminderAt || null
+    )
+    if (validationMsg) {
+      setReminderError(validationMsg)
+      return
+    }
+
+    if (form.assigneeId) {
+      setCurrentUserId(form.assigneeId)
+    }
+
     if (isEditing && task) {
       const payload = buildPayload(task.id, task.createdAt)
       updateTask(task.id, {
@@ -106,9 +145,12 @@ export function TaskModal({
         assigneeId: payload.assigneeId,
         categoryId: payload.categoryId,
         dueDate: payload.dueDate,
+        reminderType: payload.reminderType,
+        reminderDate: payload.reminderDate,
         tags: payload.tags,
       })
       await syncToBackend(payload)
+      setReminderSaved('Promemoria salvato con successo')
     } else {
       const now = new Date().toISOString()
       const localPayload = {
@@ -122,10 +164,16 @@ export function TaskModal({
         assigneeId: form.assigneeId || null,
         categoryId: form.categoryId || null,
         dueDate: form.dueDate || null,
+        reminderType: form.reminderType === 'none' ? null : form.reminderType,
+        reminderDate:
+          form.reminderType === 'custom'
+            ? fromDatetimeLocalValue(form.customReminderAt)
+            : null,
         tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
       }
       const newId = addTask(localPayload)
       await syncToBackend(buildPayload(newId, now))
+      setReminderSaved('Promemoria salvato con successo')
     }
     onClose()
   }
@@ -232,6 +280,62 @@ export function TaskModal({
             </div>
           </div>
 
+          {reminderError && (
+            <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              {reminderError}
+            </p>
+          )}
+
+          {reminderSaved && (
+            <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+              {reminderSaved}
+            </p>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Scadenza</label>
+            <input
+              type="date"
+              value={form.dueDate}
+              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Promemoria</label>
+            <select
+              value={form.reminderType}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  reminderType: e.target.value as ReminderType,
+                  customReminderAt: e.target.value === 'custom' ? form.customReminderAt : '',
+                })
+              }
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {(Object.entries(REMINDER_LABELS) as [ReminderType, string][]).map(
+                ([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                )
+              )}
+            </select>
+            {form.reminderType === 'custom' && (
+              <input
+                type="datetime-local"
+                value={form.customReminderAt}
+                onChange={(e) => setForm({ ...form, customReminderAt: e.target.value })}
+                className="w-full mt-2 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            )}
+            {form.reminderType !== 'none' && !form.dueDate && (
+              <p className="text-xs text-amber-700 mt-1">Imposta una scadenza per attivare il promemoria.</p>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Assegnato a</label>
@@ -246,15 +350,7 @@ export function TaskModal({
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Scadenza</label>
-              <input
-                type="date"
-                value={form.dueDate}
-                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
+            <div />
           </div>
 
           <div>

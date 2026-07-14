@@ -38,6 +38,21 @@ export function errorHandler(
     return
   }
 
+  if (
+    err.message.includes('Il promemoria') ||
+    err.message.includes('Imposta una scadenza') ||
+    err.message.includes('Data promemoria') ||
+    err.message.includes('Notifica non trovata')
+  ) {
+    res.status(400).json({ message: err.message })
+    return
+  }
+
+  if (err.message.includes('Non autorizzato')) {
+    res.status(403).json({ message: err.message })
+    return
+  }
+
   if (err.message.includes('FOREIGN KEY constraint failed')) {
     res.status(400).json({ message: 'Riferimento non valido' })
     return

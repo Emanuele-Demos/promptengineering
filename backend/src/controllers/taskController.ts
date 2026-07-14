@@ -3,6 +3,11 @@ import { randomUUID } from 'crypto'
 import type { Task } from '../types'
 import * as taskService from '../services/taskService'
 import { getParam } from '../utils/params'
+import {
+  isReminderType,
+  resolveReminderFields,
+  type ReminderType,
+} from '../utils/reminderValidation'
 
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
@@ -12,8 +17,31 @@ function normalizeStringArray(value: unknown): string[] {
 function buildTaskPayload(
   body: Record<string, unknown>,
   existing?: Task
-): Omit<Task, 'id' | 'noteItems' | 'attachments'> {
+): Omit<Task, 'id' | 'noteItems' | 'attachments'> & { reminderChanged: boolean } {
   const now = new Date().toISOString()
+
+  const dueDate =
+    body.dueDate !== undefined
+      ? ((body.dueDate as string | null) || null)
+      : (existing?.dueDate ?? null)
+
+  const rawReminderType = body.reminderType ?? existing?.reminderType ?? 'none'
+  const reminderType: ReminderType = isReminderType(rawReminderType)
+    ? rawReminderType
+    : 'none'
+
+  const customReminderDate =
+    body.reminderDate !== undefined
+      ? ((body.reminderDate as string | null) || null)
+      : existing?.reminderDate ?? null
+
+  const { reminderDate, reminderChanged } = resolveReminderFields({
+    dueDate,
+    reminderType,
+    reminderDate: reminderType === 'custom' ? customReminderDate : null,
+    existingReminderDate: existing?.reminderDate ?? null,
+    existingReminderType: existing?.reminderType ?? null,
+  })
 
   return {
     title: (body.title as string)?.trim() ?? existing?.title ?? '',
@@ -30,13 +58,13 @@ function buildTaskPayload(
       body.categoryId !== undefined
         ? ((body.categoryId as string | null) || null)
         : (existing?.categoryId ?? null),
-    dueDate:
-      body.dueDate !== undefined
-        ? ((body.dueDate as string | null) || null)
-        : (existing?.dueDate ?? null),
+    dueDate,
+    reminderDate,
+    reminderType: reminderType === 'none' ? null : reminderType,
     tags: body.tags !== undefined ? normalizeStringArray(body.tags) : (existing?.tags ?? []),
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
+    reminderChanged,
   }
 }
 
@@ -56,7 +84,7 @@ export async function getTask(req: Request, res: Response): Promise<void> {
 
 export async function createTask(req: Request, res: Response): Promise<void> {
   const body = req.body as Record<string, unknown>
-  const payload = buildTaskPayload(body)
+  const { reminderChanged, ...payload } = buildTaskPayload(body)
   const now = new Date().toISOString()
   const task: Task = {
     id: typeof body.id === 'string' && body.id ? body.id : randomUUID(),
@@ -67,7 +95,7 @@ export async function createTask(req: Request, res: Response): Promise<void> {
     updatedAt: now,
   }
 
-  const saved = await taskService.upsertTask(task)
+  const saved = await taskService.upsertTask(task, { resetReminderSent: reminderChanged })
   res.status(201).json(saved)
 }
 
@@ -79,8 +107,17 @@ export async function updateTask(req: Request, res: Response): Promise<void> {
     return
   }
 
-  const payload = buildTaskPayload(req.body, existing)
-  const task = await taskService.updateTask(id, payload)
+  const { reminderChanged, ...payload } = buildTaskPayload(req.body, existing)
+  const dueDateChanged =
+    req.body.dueDate !== undefined && payload.dueDate !== existing.dueDate
+  const shouldResetReminder = Boolean(
+    reminderChanged ||
+      (dueDateChanged && payload.reminderType && payload.reminderType !== 'none')
+  )
+
+  const task = await taskService.updateTask(id, payload, {
+    resetReminderSent: shouldResetReminder,
+  })
   res.json(task)
 }
 

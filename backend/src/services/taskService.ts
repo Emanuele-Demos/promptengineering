@@ -4,6 +4,10 @@ import { getDatabase } from '../config/database'
 import { getAttachmentsByTaskId } from './attachmentService'
 import { getNotesByTaskId } from './noteService'
 import { categoryExists, getCategoryById } from './categoryService'
+import type { ReminderType } from '../utils/reminderValidation'
+
+const TASK_SELECT = `id, title, description, notes, status, priority, assigneeId, categoryId,
+  dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt`
 
 async function getTagsForTask(taskId: string, db: Database): Promise<string[]> {
   const rows = (await db.all(
@@ -30,8 +34,11 @@ export async function buildTaskFromRow(row: TaskRow, db: Database): Promise<Task
     row.categoryId ? getCategoryById(row.categoryId, db) : Promise.resolve(undefined),
   ])
 
+  const { reminderSentAt: _sent, ...taskBase } = row
+
   return {
-    ...row,
+    ...taskBase,
+    reminderType: (row.reminderType as import('../utils/reminderValidation').ReminderType | null) ?? null,
     tags,
     links,
     attachments,
@@ -57,8 +64,7 @@ async function replaceTaskLinks(taskId: string, links: string[], db: Database): 
 export async function getAllTasks(db?: Database): Promise<Task[]> {
   const connection = db ?? (await getDatabase())
   const rows = (await connection.all(
-    `SELECT id, title, description, notes, status, priority, assigneeId, categoryId, dueDate, createdAt, updatedAt
-     FROM tasks ORDER BY createdAt DESC`
+    `SELECT ${TASK_SELECT} FROM tasks ORDER BY createdAt DESC`
   )) as TaskRow[]
 
   return Promise.all(rows.map((row) => buildTaskFromRow(row, connection)))
@@ -67,8 +73,7 @@ export async function getAllTasks(db?: Database): Promise<Task[]> {
 export async function getTaskById(id: string, db?: Database): Promise<Task | undefined> {
   const connection = db ?? (await getDatabase())
   const row = await connection.get<TaskRow>(
-    `SELECT id, title, description, notes, status, priority, assigneeId, categoryId, dueDate, createdAt, updatedAt
-     FROM tasks WHERE id = ?`,
+    `SELECT ${TASK_SELECT} FROM tasks WHERE id = ?`,
     [id]
   )
 
@@ -87,8 +92,9 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
   try {
     await connection.run(
       `INSERT INTO tasks (
-        id, title, description, notes, status, priority, assigneeId, categoryId, dueDate, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, title, description, notes, status, priority, assigneeId, categoryId,
+        dueDate, reminderDate, reminderType, reminderSentAt, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         task.id,
         task.title,
@@ -99,6 +105,9 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         task.assigneeId,
         task.categoryId,
         task.dueDate,
+        task.reminderDate,
+        task.reminderType,
+        null,
         task.createdAt,
         task.updatedAt,
       ]
@@ -118,6 +127,9 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
         assigneeId: task.assigneeId,
         categoryId: task.categoryId,
         dueDate: task.dueDate,
+        reminderDate: task.reminderDate,
+        reminderType: task.reminderType,
+        reminderSentAt: null,
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
       },
@@ -132,6 +144,7 @@ export async function createTask(task: Task, db?: Database): Promise<Task> {
 export async function updateTask(
   id: string,
   task: Omit<Task, 'id' | 'noteItems' | 'attachments'>,
+  options?: { resetReminderSent?: boolean },
   db?: Database
 ): Promise<Task> {
   const connection = db ?? (await getDatabase())
@@ -142,10 +155,20 @@ export async function updateTask(
 
   await connection.run('BEGIN')
   try {
+    const existingRow = await connection.get<{ reminderSentAt: string | null }>(
+      `SELECT reminderSentAt FROM tasks WHERE id = ?`,
+      [id]
+    )
+    const reminderSentAt = options?.resetReminderSent
+      ? null
+      : (existingRow?.reminderSentAt ?? null)
+
     await connection.run(
       `UPDATE tasks SET
         title = ?, description = ?, notes = ?, status = ?, priority = ?,
-        assigneeId = ?, categoryId = ?, dueDate = ?, updatedAt = ?
+        assigneeId = ?, categoryId = ?, dueDate = ?,
+        reminderDate = ?, reminderType = ?,
+        reminderSentAt = ?, updatedAt = ?
        WHERE id = ?`,
       [
         task.title,
@@ -156,6 +179,9 @@ export async function updateTask(
         task.assigneeId,
         task.categoryId,
         task.dueDate,
+        task.reminderDate,
+        task.reminderType,
+        reminderSentAt,
         task.updatedAt,
         id,
       ]
@@ -179,11 +205,15 @@ export async function deleteTask(id: string, db?: Database): Promise<void> {
   await connection.run(`DELETE FROM tasks WHERE id = ?`, [id])
 }
 
-export async function upsertTask(task: Task, db?: Database): Promise<Task> {
+export async function upsertTask(
+  task: Task,
+  options?: { resetReminderSent?: boolean },
+  db?: Database
+): Promise<Task> {
   const connection = db ?? (await getDatabase())
   const existing = await getTaskById(task.id, connection)
   if (existing) {
-    return updateTask(task.id, task, connection)
+    return updateTask(task.id, task, options, connection)
   }
   return createTask(task, connection)
 }

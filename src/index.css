@@ -23,6 +23,20 @@
   }
 }
 
+@layer components {
+  .menu-item {
+    @apply flex items-center gap-3 rounded-2xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-600 transition-all duration-200;
+  }
+
+  .menu-item:hover {
+    @apply border-white/70 bg-white/70 text-slate-900 shadow-sm;
+  }
+
+  .menu-item.active {
+    @apply border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm;
+  }
+}
+
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;

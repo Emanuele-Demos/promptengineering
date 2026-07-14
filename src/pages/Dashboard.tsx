@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CheckCircle2,
   Clock,
@@ -21,7 +21,7 @@ import {
 
 // Palette colori coordinata per i grafici
 const COLORI_CATEGORIE = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6']
-const MAPPATURA_COLORI_PRIORITA = {
+const MAPPATURA_COLORI_PRIORITA: Record<string, string> = {
   'Urgente': '#ef4444',
   'Alta': '#f97316',
   'Media': '#eab308',
@@ -32,8 +32,38 @@ const MAPPATURA_COLORI_PRIORITA = {
   'Low': '#10b981'
 }
 
+const API_BASE = 'http://localhost:3001/api'
+
+interface StatisticsResponse {
+  indicators: {
+    completedToday: number
+    completedThisWeek: number
+    completedThisMonth: number
+    overdue: number
+    open: number
+    averageCompletionTime: string
+  }
+  charts: {
+    weeklyTrend: { name: string; task: number }[]
+    monthlyCompletions: { name: string; task: number }[]
+    tasksByCategory: { name: string; value: number }[]
+    tasksByPriority: { name: string; value: number }[]
+  }
+}
+
 export function Dashboard() {
-  const { tasks, members, stats, overdueTasks, getMember } = useApp()
+  const { tasks, members, stats, overdueTasks, getMember, getCategory } = useApp()
+  const [serverStatistics, setServerStatistics] = useState<StatisticsResponse | null>(null)
+
+  useEffect(() => {
+    fetch(`${API_BASE}/statistics`)
+      .then((response) => {
+        if (!response.ok) throw new Error('Errore caricamento statistiche')
+        return response.json()
+      })
+      .then((data: StatisticsResponse) => setServerStatistics(data))
+      .catch((err) => console.error('Statistiche backend non disponibili:', err))
+  }, [])
 
   // --- LOGICA DI CALCOLO DINAMICA DEI 6 INDICATORI RICHIESTI ---
   const metricheElementi = useMemo(() => {
@@ -62,7 +92,7 @@ export function Dashboard() {
     let tempoMedioStr = "1.5 giorni" // Fallback predefinito se non ci sono dati storici
     if (taskFatti.length > 0) {
       const totaleOre = taskFatti.reduce((acc, t) => {
-        const diffMs = new Date(t.updatedAt) - new Date(t.createdAt)
+        const diffMs = new Date(t.updatedAt).getTime() - new Date(t.createdAt).getTime()
         return acc + Math.max(0, diffMs / (1000 * 60 * 60))
       }, 0)
       const mediaOre = totaleOre / taskFatti.length
@@ -103,16 +133,17 @@ export function Dashboard() {
     })
 
     // Grafico 3: Task per Categoria (Estrae i tag o le categorie dai tuoi task)
-    const mappaCategorie = {}
+    const mappaCategorie: Record<string, number> = {}
     tasks.forEach(t => {
-      const cat = t.category || (t.tags && t.tags[0]) || 'Generale'
+      const category = getCategory(t.categoryId)
+      const cat = category?.name || (t.tags && t.tags[0]) || 'Generale'
       const catFormattata = cat.charAt(0).toUpperCase() + cat.slice(1)
       mappaCategorie[catFormattata] = (mappaCategorie[catFormattata] || 0) + 1
     })
     const taskPerCategoria = Object.keys(mappaCategorie).map(name => ({ name, value: mappaCategorie[name] }))
 
     // Grafico 4: Task per Priorità
-    const mappaPriorita = {}
+    const mappaPriorita: Record<string, number> = {}
     tasks.forEach(t => {
       const prio = t.priority || 'Media'
       const prioFormattata = prio.charAt(0).toUpperCase() + prio.slice(1)
@@ -124,7 +155,7 @@ export function Dashboard() {
       completatiOggi, completatiSettimana, completatiMese, inRitardo, aperti, tempoMedioStr,
       andamentoSettimanale, completamentiMensili, taskPerCategoria, taskPerPriorita
     }
-  }, [tasks, overdueTasks, stats])
+  }, [tasks, overdueTasks, stats, getCategory])
 
   // Codice preesistente per i task recenti e il carico di lavoro
   const recentTasks = [...tasks]
@@ -141,13 +172,20 @@ export function Dashboard() {
 
   // Configurazione dei 6 indicatori precisi richiesti dal professore
   const statCards = [
-    { label: 'Task completati oggi', value: metricheElementi.completatiOggi, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50' },
-    { label: 'Task completati questa settimana', value: metricheElementi.completatiSettimana, icon: TrendingUp, color: 'text-indigo-600 bg-indigo-50' },
-    { label: 'Task completati questo mese', value: metricheElementi.completatiMese, icon: CheckCircle2, color: 'text-blue-600 bg-blue-50' },
-    { label: 'Task in ritardo', value: metricheElementi.inRitardo, icon: AlertTriangle, color: metricheElementi.inRitardo > 0 ? 'text-red-600 bg-red-50' : 'text-slate-500 bg-slate-50' },
-    { label: 'Task aperti', value: metricheElementi.aperti, icon: Clock, color: 'text-amber-600 bg-amber-50' },
-    { label: 'Tempo medio di completamento', value: metricheElementi.tempoMedioStr, icon: Clock, color: 'text-teal-600 bg-teal-50' },
+    { label: 'Task completati oggi', value: serverStatistics?.indicators.completedToday ?? metricheElementi.completatiOggi, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50' },
+    { label: 'Task completati questa settimana', value: serverStatistics?.indicators.completedThisWeek ?? metricheElementi.completatiSettimana, icon: TrendingUp, color: 'text-indigo-600 bg-indigo-50' },
+    { label: 'Task completati questo mese', value: serverStatistics?.indicators.completedThisMonth ?? metricheElementi.completatiMese, icon: CheckCircle2, color: 'text-blue-600 bg-blue-50' },
+    { label: 'Task in ritardo', value: serverStatistics?.indicators.overdue ?? metricheElementi.inRitardo, icon: AlertTriangle, color: (serverStatistics?.indicators.overdue ?? metricheElementi.inRitardo) > 0 ? 'text-red-600 bg-red-50' : 'text-slate-500 bg-slate-50' },
+    { label: 'Task aperti', value: serverStatistics?.indicators.open ?? metricheElementi.aperti, icon: Clock, color: 'text-amber-600 bg-amber-50' },
+    { label: 'Tempo medio di completamento', value: serverStatistics?.indicators.averageCompletionTime ?? metricheElementi.tempoMedioStr, icon: Clock, color: 'text-teal-600 bg-teal-50' },
   ]
+
+  const chartData = {
+    andamentoSettimanale: serverStatistics?.charts.weeklyTrend ?? metricheElementi.andamentoSettimanale,
+    completamentiMensili: serverStatistics?.charts.monthlyCompletions ?? metricheElementi.completamentiMensili,
+    taskPerCategoria: serverStatistics?.charts.tasksByCategory ?? metricheElementi.taskPerCategoria,
+    taskPerPriorita: serverStatistics?.charts.tasksByPriority ?? metricheElementi.taskPerPriorita,
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-8">
@@ -285,7 +323,7 @@ export function Dashboard() {
             <h3 className="text-sm font-semibold text-slate-700 mb-4">Andamento settimanale</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={metricheElementi.andamentoSettimanale}>
+                <LineChart data={chartData.andamentoSettimanale}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
                   <YAxis stroke="#94a3b8" fontSize={12} allowDecimals={false} />
@@ -302,7 +340,7 @@ export function Dashboard() {
             <h3 className="text-sm font-semibold text-slate-700 mb-4">Completamenti mensili</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={metricheElementi.completamentiMensili}>
+                <BarChart data={chartData.completamentiMensili}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
                   <YAxis stroke="#94a3b8" fontSize={12} allowDecimals={false} />
@@ -320,8 +358,8 @@ export function Dashboard() {
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={metricheElementi.taskPerCategoria} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={3} dataKey="value">
-                    {metricheElementi.taskPerCategoria.map((entry, index) => (
+                  <Pie data={chartData.taskPerCategoria} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={3} dataKey="value">
+                    {chartData.taskPerCategoria.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORI_CATEGORIE[index % COLORI_CATEGORIE.length]} />
                     ))}
                   </Pie>
@@ -338,8 +376,8 @@ export function Dashboard() {
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={metricheElementi.taskPerPriorita} cx="50%" cy="50%" outerRadius={80} label fontSize={11} dataKey="value">
-                    {metricheElementi.taskPerPriorita.map((entry, index) => {
+                  <Pie data={chartData.taskPerPriorita} cx="50%" cy="50%" outerRadius={80} label fontSize={11} dataKey="value">
+                    {chartData.taskPerPriorita.map((entry, index) => {
                       const colorePrio = MAPPATURA_COLORI_PRIORITA[entry.name] || '#64748b'
                       return <Cell key={`cell-${index}`} fill={colorePrio} />
                     })}

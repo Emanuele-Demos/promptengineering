@@ -1,5 +1,6 @@
 export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
+export type RepeatType = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
 
 export interface TeamMember {
   id: string
@@ -10,11 +11,13 @@ export interface TeamMember {
 }
 export interface Attachment {
   id: string
-  taskid?: string
+  taskId?: string
   fileName: string
   path: string
   type: string
   size: number
+  file?: File
+  createdAt?: string
 }
 
 export interface Folder {
@@ -23,7 +26,7 @@ export interface Folder {
   color: string
 }
 
-export interface Folder {
+export interface Category {
   id: string
   name: string
   color: string
@@ -40,15 +43,38 @@ export interface Task {
   priority: TaskPriority
   assigneeId: string | null
   folderId?: string | null
+  categoryId?: string | null
   dueDate: string | null
+  reminderDate?: string | null
+  repeatType?: RepeatType
+  repeatEvery?: number | null
+  repeatEnd?: string | null
+  repeatDays?: number[]
+  repeatMaxOccurrences?: number | null
+  repeatCount?: number
+  repeatNextDate?: string | null
+  repeatStopped?: boolean
+  repeatParentId?: string | null
   tags: string[]
   createdAt: string
   updatedAt: string
 }
 
+export interface AppNotification {
+  id: string
+  taskId: string | null
+  type: 'reminder'
+  title: string
+  message: string
+  read: boolean
+  createdAt: string
+}
+
 export interface AppState {
   members: TeamMember[]
   folders: Folder[]
+  categories: Category[]
+  notifications: AppNotification[]
   tasks: Task[]
 }
 

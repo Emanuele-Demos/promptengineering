@@ -28,6 +28,13 @@ const initialFolders = [
   { id: 'f3', name: 'Pianificazione', color: '#14b8a6' },
 ];
 
+const initialCategories = [
+  { id: 'c1', name: 'Lavoro', color: '#6366f1' },
+  { id: 'c2', name: 'Università', color: '#8b5cf6' },
+  { id: 'c3', name: 'Personale', color: '#ec4899' },
+  { id: 'c4', name: 'Casa', color: '#14b8a6' },
+];
+
 const initialTasks = [
   {
     id: 't1',
@@ -37,7 +44,11 @@ const initialTasks = [
     priority: 'high',
     assigneeId: 'm1',
     folderId: 'f3',
+    categoryId: 'c1',
     dueDate: '2026-07-15',
+    reminderDate: null,
+    notes: '',
+    links: JSON.stringify([]),
     tags: JSON.stringify(['planning']),
     createdAt: '2026-07-01T09:00:00Z',
     updatedAt: '2026-07-05T14:30:00Z',
@@ -50,7 +61,11 @@ const initialTasks = [
     priority: 'urgent',
     assigneeId: 'm2',
     folderId: 'f2',
+    categoryId: 'c1',
     dueDate: '2026-07-12',
+    reminderDate: null,
+    notes: '',
+    links: JSON.stringify([]),
     tags: JSON.stringify(['backend', 'security']),
     createdAt: '2026-07-02T10:00:00Z',
     updatedAt: '2026-07-02T10:00:00Z',
@@ -63,7 +78,11 @@ const initialTasks = [
     priority: 'medium',
     assigneeId: 'm3',
     folderId: 'f1',
+    categoryId: 'c1',
     dueDate: '2026-07-20',
+    reminderDate: null,
+    notes: '',
+    links: JSON.stringify([]),
     tags: JSON.stringify(['design', 'ui']),
     createdAt: '2026-06-28T11:00:00Z',
     updatedAt: '2026-07-04T16:00:00Z',
@@ -76,7 +95,11 @@ const initialTasks = [
     priority: 'medium',
     assigneeId: 'm4',
     folderId: 'f1',
+    categoryId: 'c2',
     dueDate: '2026-07-25',
+    reminderDate: null,
+    notes: '',
+    links: JSON.stringify([]),
     tags: JSON.stringify(['testing']),
     createdAt: '2026-07-03T08:00:00Z',
     updatedAt: '2026-07-03T08:00:00Z',
@@ -89,7 +112,11 @@ const initialTasks = [
     priority: 'low',
     assigneeId: 'm2',
     folderId: 'f2',
+    categoryId: 'c1',
     dueDate: '2026-07-01',
+    reminderDate: null,
+    notes: '',
+    links: JSON.stringify([]),
     tags: JSON.stringify(['docs']),
     createdAt: '2026-06-20T09:00:00Z',
     updatedAt: '2026-06-30T17:00:00Z',
@@ -102,7 +129,11 @@ const initialTasks = [
     priority: 'high',
     assigneeId: 'm2',
     folderId: 'f2',
+    categoryId: 'c3',
     dueDate: '2026-07-10',
+    reminderDate: null,
+    notes: '',
+    links: JSON.stringify([]),
     tags: JSON.stringify(['devops']),
     createdAt: '2026-07-04T12:00:00Z',
     updatedAt: '2026-07-05T09:00:00Z',
@@ -131,7 +162,16 @@ export function initDb() {
       )
     `);
 
-    // 3. Tabella tasks (aggiornata con folderId)
+    // 2b. Tabella categories
+    db.run(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        color TEXT NOT NULL
+      )
+    `);
+
+    // 3. Tabella tasks (aggiornata con folderId e categoryId)
     db.run(`
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
@@ -141,12 +181,71 @@ export function initDb() {
         priority TEXT NOT NULL,
         assigneeId TEXT,
         folderId TEXT,
+        categoryId TEXT,
         dueDate TEXT,
+        reminderDate TEXT,
+        notes TEXT NOT NULL DEFAULT '',
+        links TEXT NOT NULL DEFAULT '[]',
+        repeatType TEXT NOT NULL DEFAULT 'none',
+        repeatEvery INTEGER,
+        repeatEnd TEXT,
+        repeatDays TEXT NOT NULL DEFAULT '[]',
+        repeatMaxOccurrences INTEGER,
+        repeatCount INTEGER NOT NULL DEFAULT 0,
+        repeatNextDate TEXT,
+        repeatStopped INTEGER NOT NULL DEFAULT 0,
+        repeatParentId TEXT,
         tags TEXT NOT NULL DEFAULT '[]',
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL,
         FOREIGN KEY (assigneeId) REFERENCES members(id) ON DELETE SET NULL,
-        FOREIGN KEY (folderId) REFERENCES folders(id) ON DELETE SET NULL
+        FOREIGN KEY (folderId) REFERENCES folders(id) ON DELETE SET NULL,
+        FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL
+      )
+    `);
+
+    // Migrazione: aggiunge categoryId se la tabella tasks esisteva già
+    db.run('ALTER TABLE tasks ADD COLUMN folderId TEXT', () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN categoryId TEXT', () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN reminderDate TEXT', () => {});
+    db.run("ALTER TABLE tasks ADD COLUMN notes TEXT NOT NULL DEFAULT ''", () => {});
+    db.run("ALTER TABLE tasks ADD COLUMN links TEXT NOT NULL DEFAULT '[]'", () => {});
+    db.run("ALTER TABLE tasks ADD COLUMN repeatType TEXT NOT NULL DEFAULT 'none'", () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN repeatEvery INTEGER', () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN repeatEnd TEXT', () => {});
+    db.run("ALTER TABLE tasks ADD COLUMN repeatDays TEXT NOT NULL DEFAULT '[]'", () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN repeatMaxOccurrences INTEGER', () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN repeatCount INTEGER NOT NULL DEFAULT 0', () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN repeatNextDate TEXT', () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN repeatStopped INTEGER NOT NULL DEFAULT 0', () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN repeatParentId TEXT', () => {});
+
+    // 4. Tabella notifications
+    db.run(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id TEXT PRIMARY KEY,
+        taskId TEXT,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        read INTEGER NOT NULL DEFAULT 0,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY (taskId) REFERENCES tasks(id) ON DELETE CASCADE,
+        UNIQUE(taskId, type)
+      )
+    `);
+
+    // 5. Tabella attachments
+    db.run(`
+      CREATE TABLE IF NOT EXISTS attachments (
+        id TEXT PRIMARY KEY,
+        taskId TEXT NOT NULL,
+        fileName TEXT NOT NULL,
+        path TEXT NOT NULL,
+        type TEXT,
+        size INTEGER,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY (taskId) REFERENCES tasks(id) ON DELETE CASCADE
       )
     `);
 
@@ -169,11 +268,20 @@ export function initDb() {
       }
     });
 
+    db.get('SELECT COUNT(*) as count FROM categories', (err, row) => {
+      if (!err && row.count === 0) {
+        const stmt = db.prepare('INSERT INTO categories (id, name, color) VALUES (?, ?, ?)');
+        initialCategories.forEach((c) => stmt.run(c.id, c.name, c.color));
+        stmt.finalize();
+        console.log('Seed categories completato.');
+      }
+    });
+
     db.get('SELECT COUNT(*) as count FROM tasks', (err, row) => {
       if (!err && row.count === 0) {
-        const stmt = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, dueDate, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        const stmt = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, reminderDate, notes, links, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
         initialTasks.forEach((t) => {
-          stmt.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.dueDate, t.tags, t.createdAt, t.updatedAt);
+          stmt.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.categoryId ?? null, t.dueDate, t.reminderDate ?? null, t.notes, t.links, t.tags, t.createdAt, t.updatedAt);
         });
         stmt.finalize();
         console.log('Seed tasks completato.');
@@ -184,8 +292,11 @@ export function initDb() {
 
 export function resetDb(callback) {
   db.serialize(() => {
+    db.run('DELETE FROM notifications');
+    db.run('DELETE FROM attachments');
     db.run('DELETE FROM tasks');
     db.run('DELETE FROM folders');
+    db.run('DELETE FROM categories');
     db.run('DELETE FROM members');
 
     const stmtM = db.prepare('INSERT INTO members (id, name, email, role, color) VALUES (?, ?, ?, ?, ?)');
@@ -196,9 +307,13 @@ export function resetDb(callback) {
     initialFolders.forEach((f) => stmtF.run(f.id, f.name, f.color));
     stmtF.finalize();
 
-    const stmtT = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, dueDate, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const stmtC = db.prepare('INSERT INTO categories (id, name, color) VALUES (?, ?, ?)');
+    initialCategories.forEach((c) => stmtC.run(c.id, c.name, c.color));
+    stmtC.finalize();
+
+    const stmtT = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, reminderDate, notes, links, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     initialTasks.forEach((t) => {
-      stmtT.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.dueDate, t.tags, t.createdAt, t.updatedAt);
+      stmtT.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.categoryId ?? null, t.dueDate, t.reminderDate ?? null, t.notes, t.links, t.tags, t.createdAt, t.updatedAt);
     });
     stmtT.finalize();
 

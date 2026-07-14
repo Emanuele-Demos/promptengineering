@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
   Kanban,
+  Tags,
   Users,
   Zap,
 } from 'lucide-react'
@@ -11,6 +12,7 @@ const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/board', label: 'Board', icon: Kanban },
   { to: '/team', label: 'Team', icon: Users },
+  { to: '/categories', label: 'Categorie', icon: Tags },
 ]
 
 export function Sidebar() {

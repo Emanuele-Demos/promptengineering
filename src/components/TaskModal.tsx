@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { X, Trash2 } from 'lucide-react'
-import type { Task, TaskPriority, TaskStatus } from '../types'
+import { Bell, X, Trash2 } from 'lucide-react'
+import type { Attachment, RepeatType, Task, TaskPriority, TaskStatus } from '../types'
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
@@ -20,12 +20,71 @@ const emptyForm = {
   description: '',
   notes: '',
   links: '',
-  attachments: [],
+  attachments: [] as Attachment[],
   status: 'todo' as TaskStatus,
   priority: 'medium' as TaskPriority,
   assigneeId: '' as string,
+  categoryId: '' as string,
   dueDate: '',
+  reminderOption: '',
+  customReminderDate: '',
+  isRecurring: false,
+  repeatType: 'weekly' as RepeatType,
+  repeatEvery: '1',
+  repeatEnd: '',
+  repeatDays: [] as number[],
+  repeatMaxOccurrences: '',
+  repeatStopped: false,
   tags: '',
+}
+
+const REMINDER_OPTIONS = [
+  { value: '5', label: '5 minuti prima' },
+  { value: '30', label: '30 minuti prima' },
+  { value: '60', label: '1 ora prima' },
+  { value: '1440', label: '1 giorno prima' },
+  { value: 'custom', label: 'Personalizzato' },
+]
+
+const REPEAT_OPTIONS = [
+  { value: 'daily', label: 'Ogni giorno' },
+  { value: 'weekly', label: 'Ogni settimana' },
+  { value: 'monthly', label: 'Ogni mese' },
+  { value: 'yearly', label: 'Ogni anno' },
+  { value: 'custom', label: 'Personalizzata' },
+]
+
+const WEEK_DAYS = [
+  { value: 1, label: 'Lun' },
+  { value: 2, label: 'Mar' },
+  { value: 3, label: 'Mer' },
+  { value: 4, label: 'Gio' },
+  { value: 5, label: 'Ven' },
+  { value: 6, label: 'Sab' },
+  { value: 0, label: 'Dom' },
+]
+
+function toDateTimeLocal(value: string | null | undefined) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const offset = date.getTimezoneOffset()
+  const local = new Date(date.getTime() - offset * 60 * 1000)
+  return local.toISOString().slice(0, 16)
+}
+
+function toIsoFromDateTimeLocal(value: string) {
+  return value ? new Date(value).toISOString() : null
+}
+
+function buildReminderDate(dueDate: string, option: string, customReminderDate: string) {
+  if (!option) return null
+  if (option === 'custom') return toIsoFromDateTimeLocal(customReminderDate)
+  if (!dueDate) return null
+
+  const dueAt = new Date(`${dueDate}T09:00:00`)
+  dueAt.setMinutes(dueAt.getMinutes() - Number(option))
+  return dueAt.toISOString()
 }
 
 export function TaskModal({
@@ -34,7 +93,15 @@ export function TaskModal({
   open,
   onClose,
 }: TaskModalProps) {
-  const { members, addTask, updateTask, deleteTask } = useApp()
+  const {
+    members,
+    categories,
+    addTask,
+    updateTask,
+    deleteTask,
+    uploadTaskAttachments,
+    deleteAttachment,
+  } = useApp()
   const isEditing = !!task
 
   const [form, setForm] = useState(emptyForm)
@@ -50,7 +117,17 @@ export function TaskModal({
         status: task.status,
         priority: task.priority,
         assigneeId: task.assigneeId ?? '',
+        categoryId: task.categoryId ?? '',
         dueDate: task.dueDate ?? '',
+        reminderOption: task.reminderDate ? 'custom' : '',
+        customReminderDate: toDateTimeLocal(task.reminderDate),
+        isRecurring: !!task.repeatType && task.repeatType !== 'none',
+        repeatType: task.repeatType && task.repeatType !== 'none' ? task.repeatType : 'weekly',
+        repeatEvery: String(task.repeatEvery ?? 1),
+        repeatEnd: task.repeatEnd ?? '',
+        repeatDays: task.repeatDays ?? [],
+        repeatMaxOccurrences: task.repeatMaxOccurrences ? String(task.repeatMaxOccurrences) : '',
+        repeatStopped: !!task.repeatStopped,
         tags: task.tags.join(', '),
       })
     } else {
@@ -76,7 +153,15 @@ export function TaskModal({
       status: form.status,
       priority: form.priority,
       assigneeId: form.assigneeId || null,
+      categoryId: form.categoryId || null,
       dueDate: form.dueDate || null,
+      reminderDate: buildReminderDate(form.dueDate, form.reminderOption, form.customReminderDate),
+      repeatType: form.isRecurring ? form.repeatType : 'none',
+      repeatEvery: form.isRecurring ? Number(form.repeatEvery || 1) : null,
+      repeatEnd: form.isRecurring ? form.repeatEnd || null : null,
+      repeatDays: form.isRecurring ? form.repeatDays : [],
+      repeatMaxOccurrences: form.isRecurring && form.repeatMaxOccurrences ? Number(form.repeatMaxOccurrences) : null,
+      repeatStopped: form.isRecurring ? form.repeatStopped : false,
       tags: form.tags
         .split(',')
         .map((t) => t.trim())
@@ -96,6 +181,15 @@ export function TaskModal({
       deleteTask(task.id)
       onClose()
     }
+  }
+
+  const toggleRepeatDay = (day: number) => {
+    setForm({
+      ...form,
+      repeatDays: form.repeatDays.includes(day)
+        ? form.repeatDays.filter((value) => value !== day)
+        : [...form.repeatDays, day],
+    })
   }
 
   return (
@@ -240,6 +334,28 @@ export function TaskModal({
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
+                Categoria
+              </label>
+              <select
+                value={form.categoryId}
+                onChange={(e) =>
+                  setForm({ ...form, categoryId: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Nessuna categoria</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Scadenza
               </label>
               <input
@@ -251,6 +367,162 @@ export function TaskModal({
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Promemoria
+              </label>
+              <div className="relative">
+                <Bell className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <select
+                  value={form.reminderOption}
+                  onChange={(e) =>
+                    setForm({ ...form, reminderOption: e.target.value })
+                  }
+                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                >
+                  <option value="">Nessun promemoria</option>
+                  {REMINDER_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {form.reminderOption === 'custom' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Data e ora promemoria
+              </label>
+              <input
+                type="datetime-local"
+                value={form.customReminderDate}
+                onChange={(e) =>
+                  setForm({ ...form, customReminderDate: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
+
+          <div className="rounded-xl border border-slate-200 p-3 space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={form.isRecurring}
+                onChange={(e) =>
+                  setForm({ ...form, isRecurring: e.target.checked })
+                }
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              Task ricorrente
+            </label>
+
+            {form.isRecurring && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Frequenza
+                    </label>
+                    <select
+                      value={form.repeatType}
+                      onChange={(e) =>
+                        setForm({ ...form, repeatType: e.target.value as RepeatType })
+                      }
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    >
+                      {REPEAT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Ripeti ogni
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.repeatEvery}
+                      onChange={(e) => setForm({ ...form, repeatEvery: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                {(form.repeatType === 'weekly' || form.repeatType === 'custom') && (
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 mb-2">
+                      Giorni della settimana
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {WEEK_DAYS.map((day) => (
+                        <button
+                          type="button"
+                          key={day.value}
+                          onClick={() => toggleRepeatDay(day.value)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                            form.repeatDays.includes(day.value)
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Fine ricorrenza
+                    </label>
+                    <input
+                      type="date"
+                      value={form.repeatEnd}
+                      onChange={(e) => setForm({ ...form, repeatEnd: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Numero massimo
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.repeatMaxOccurrences}
+                      onChange={(e) =>
+                        setForm({ ...form, repeatMaxOccurrences: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Nessun limite"
+                    />
+                  </div>
+                </div>
+
+                {isEditing && (
+                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={form.repeatStopped}
+                      onChange={(e) =>
+                        setForm({ ...form, repeatStopped: e.target.checked })
+                      }
+                      className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
+                    />
+                    Interrompi ricorrenza
+                  </label>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -273,6 +545,8 @@ export function TaskModal({
             <AttachmentUploader
               attachments={form.attachments}
               onChange={(attachments) => setForm({ ...form, attachments })}
+              onUpload={task ? (files) => uploadTaskAttachments(task.id, files) : undefined}
+              onDelete={task ? (id) => deleteAttachment(task.id, id) : undefined}
             />
           </div>
 

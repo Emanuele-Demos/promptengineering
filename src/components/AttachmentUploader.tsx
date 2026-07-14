@@ -1,23 +1,37 @@
 import type { Attachment } from "../types"
 import React, { useRef } from "react"
-import { Paperclip, FileText } from "lucide-react"
+import { Download, FileText, Plus } from "lucide-react"
 
 interface Props {
     attachments: Attachment[]
     onChange: (files: Attachment[]) => void
+    onUpload?: (files: File[]) => Promise<void>
+    onDelete?: (id: string) => void
 }
 
-export function AttachmentUploader({ attachments, onChange }: Props) {
+export function AttachmentUploader({ attachments, onChange, onUpload, onDelete }: Props) {
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const [uploading, setUploading] = React.useState(false)
 
-    const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || [])
+        if (files.length === 0) return
+
+        if (onUpload) {
+            setUploading(true)
+            await onUpload(files)
+            setUploading(false)
+            e.target.value = ""
+            return
+        }
+
         const nuovi: Attachment[] = files.map(file => ({
             id: crypto.randomUUID(),
             fileName: file.name,
             type: file.type,
             size: file.size,
-            path: URL.createObjectURL(file)
+            path: URL.createObjectURL(file),
+            file,
         }))
         onChange([...attachments, ...nuovi])
         // Reset output value to allow re-uploading same file if deleted
@@ -25,6 +39,10 @@ export function AttachmentUploader({ attachments, onChange }: Props) {
     }
 
     const handleDelete = (id: string) => {
+        if (onDelete) {
+            onDelete(id)
+            return
+        }
         onChange(attachments.filter(a => a.id !== id))
     }
 
@@ -50,9 +68,10 @@ export function AttachmentUploader({ attachments, onChange }: Props) {
                     type="button"
                     onClick={handleButtonClick}
                     className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer"
+                    disabled={uploading}
                 >
-                    <Paperclip className="w-4 h-4 text-slate-400 group-hover:text-indigo-500" />
-                    <span>Seleziona file da allegare</span>
+                    <Plus className="w-4 h-4 text-slate-400 group-hover:text-indigo-500" />
+                    <span>{uploading ? 'Caricamento...' : '+ Aggiungi allegato'}</span>
                 </button>
             </div>
             
@@ -77,8 +96,11 @@ export function AttachmentUploader({ attachments, onChange }: Props) {
                                 <a
                                     href={file.path}
                                     download={file.fileName}
-                                    className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium"
                                 >
+                                    <Download className="w-3.5 h-3.5" />
                                     Download
                                 </a>
                                 <button

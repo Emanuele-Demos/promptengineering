@@ -1,4 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
+import { NotificationCenter } from './NotificationCenter'
 
 export function Layout() {
   return (
@@ -21,6 +22,10 @@ export function Layout() {
             Team
           </NavLink>
 
+          <NavLink to="/categories" className="menu-item">
+            Categorie
+          </NavLink>
+
           <NavLink to="/calendar" className="menu-item">
             📅 Calendar
           </NavLink>
@@ -33,6 +38,7 @@ export function Layout() {
 
       {/* CONTENUTO */}
       <main className="flex-1 p-6">
+        <NotificationCenter />
         <Outlet />
       </main>
     </div>

@@ -6,6 +6,7 @@ import { Board } from './pages/Board'
 import { Team } from './pages/Team'
 import { CalendarPage } from './pages/CalendarPage'
 import { GestioneStato } from './pages/GestioneStato'
+import { Categories } from './pages/Categories'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="board" element={<Board />} />
             <Route path="team" element={<Team />} />
+            <Route path="categories" element={<Categories />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="gestione_stato" element={<GestioneStato />} />
           </Route>

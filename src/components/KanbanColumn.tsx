@@ -29,7 +29,7 @@ export function KanbanColumn({
 
   return (
     <div
-      className={`flex flex-col w-[min(84vw,18rem)] sm:w-72 shrink-0 snap-start rounded-xl border ${style.border} ${style.bg}`}
+      className={`flex flex-col w-72 shrink-0 snap-start rounded-xl border ${style.border} ${style.bg}`}
       onDragOver={onDragOver}
       onDrop={(e) => {
         e.preventDefault()
@@ -54,7 +54,7 @@ export function KanbanColumn({
         </button>
       </div>
 
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100dvh-18rem)] sm:max-h-[calc(100vh-220px)] scrollbar-thin min-h-[120px]">
+      <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[70vh] scrollbar-thin min-h-[120px]">
         {tasks.map((task) => (
           <div
             key={task.id}

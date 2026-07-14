@@ -46,16 +46,14 @@ export function Board() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <header className="flex flex-col gap-4 mb-4 sm:mb-6">
-        <div className="hidden lg:block">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Board Kanban</h1>
-          <p className="text-sm sm:text-base text-slate-500 mt-1">
-            Trascina i task tra le colonne per aggiornare lo stato
-          </p>
+    <div className="p-6">
+      <header className="flex flex-col gap-4 mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Board Kanban</h1>
+          <p className="text-base text-slate-500 mt-1">Trascina i task tra le colonne per aggiornare lo stato</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <div className="relative flex-1 min-w-0">
+        <div className="flex flex-row items-center gap-3">
+          <div className="relative flex-1 min-w-0 max-w-[56%]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
@@ -65,7 +63,7 @@ export function Board() {
               className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 ml-4">
             <button
               type="button"
               onClick={() => setShowEstimatedOnly((prev) => !prev)}
@@ -83,26 +81,28 @@ export function Board() {
               className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              <span className="sm:inline">Nuovo task</span>
+              <span>Nuovo task</span>
             </button>
           </div>
         </div>
       </header>
 
-      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
-        {COLUMNS.map((status) => (
-          <KanbanColumn
-            key={status}
-            status={status}
-            tasks={filteredTasks.filter((t) => t.status === status)}
-            onTaskClick={openEdit}
-            onAddTask={openCreate}
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
-            draggingId={draggingId}
-            onDragStart={setDraggingId}
-          />
-        ))}
+      <div className="flex gap-3 overflow-x-auto pb-2 pr-6 scrollbar-thin">
+        <div className="flex min-w-max gap-3">
+          {COLUMNS.map((status) => (
+            <KanbanColumn
+              key={status}
+              status={status}
+              tasks={filteredTasks.filter((t) => t.status === status)}
+              onTaskClick={openEdit}
+              onAddTask={openCreate}
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+              draggingId={draggingId}
+              onDragStart={setDraggingId}
+            />
+          ))}
+        </div>
       </div>
 
       <TaskModal

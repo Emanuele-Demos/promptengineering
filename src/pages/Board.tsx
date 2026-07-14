@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Clock3, Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Clock3, Plus, Search } from 'lucide-react'
 import type { Task, TaskStatus } from '../types'
 import { useApp } from '../store/AppContext'
 import { KanbanColumn } from '../components/KanbanColumn'
@@ -46,10 +46,7 @@ export function Board() {
     }
   }
 
-  const scrollByOffset = (offset: number) => {
-    if (!containerRef.current) return
-    containerRef.current.scrollBy({ left: offset, behavior: 'smooth' })
-  }
+
 
   // sensitivity multipliers
   const WHEEL_SCROLL_FACTOR = 0.8 // multiply wheel delta to tune sensitivity
@@ -68,21 +65,46 @@ export function Board() {
   const panStartXRef = useRef(0)
   const panStartScrollRef = useRef(0)
   const isPotentialPanRef = useRef(false)
+  const dragStartedRef = useRef(false)
+  const dragListenerRef = useRef<((e: Event) => void) | null>(null)
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = containerRef.current
     if (!el) return
     const target = e.target as HTMLElement
-    // if started on a draggable element (task), do not begin panning
-    if (target.closest && target.closest('[draggable]')) return
+    // mark potential pan; we'll activate after threshold movement
+    isPotentialPanRef.current = true
+    dragStartedRef.current = false
+    // listen for a real dragstart event; if it fires, cancel pan
+    const onDragStart = () => {
+      dragStartedRef.current = true
+      isPotentialPanRef.current = false
+      isPanningRef.current = false
+      if (dragListenerRef.current) {
+        document.removeEventListener('dragstart', dragListenerRef.current, true)
+        dragListenerRef.current = null
+      }
+    }
+    dragListenerRef.current = onDragStart
+    document.addEventListener('dragstart', onDragStart, true)
     // only enable custom panning for mouse pointers (desktop)
-    if ((e as any).pointerType && (e as any).pointerType !== 'mouse') return
+    const pointerType = (e as any).pointerType
+    if (pointerType && pointerType !== 'mouse') return
     // mark potential pan; we'll activate after threshold movement
     isPotentialPanRef.current = true
     panStartXRef.current = e.clientX
     panStartScrollRef.current = el.scrollLeft
     try {
       target.setPointerCapture?.(e.pointerId)
+    } catch (err) {
+      /* ignore */
+    }
+    // for mouse pointers temporarily disable native touch-action so custom panning works
+    try {
+      if (!pointerType || pointerType === 'mouse') {
+        el.style.touchAction = 'none'
+        el.style.cursor = 'grabbing'
+      }
     } catch (err) {
       /* ignore */
     }
@@ -97,6 +119,8 @@ export function Board() {
 
     if (!isPanningRef.current && isPotentialPanRef.current) {
       if (Math.abs(dxTotal) >= PAN_THRESHOLD) {
+        // if a real drag was detected, abort panning
+        if (dragStartedRef.current) return
         isPanningRef.current = true
         // reset start points so movement feels smooth from this moment
         panStartXRef.current = e.clientX
@@ -126,9 +150,24 @@ export function Board() {
     if (!isPanningRef.current && !isPotentialPanRef.current) return
     isPanningRef.current = false
     isPotentialPanRef.current = false
+    // cleanup dragstart listener if still present
+    if (dragListenerRef.current) {
+      document.removeEventListener('dragstart', dragListenerRef.current, true)
+      dragListenerRef.current = null
+    }
     // restore text selection if we disabled it
     try {
       document.body.style.userSelect = ''
+    } catch (err) {
+      /* ignore */
+    }
+    // restore touch-action and cursor
+    try {
+      const el = containerRef.current
+      if (el) {
+        el.style.touchAction = ''
+        el.style.cursor = 'grab'
+      }
     } catch (err) {
       /* ignore */
     }
@@ -190,7 +229,7 @@ export function Board() {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
-          className="flex gap-6 overflow-x-auto pb-6 px-6 scrollbar-thin"
+          className="flex gap-6 overflow-x-auto pb-6 px-6 scrollbar-thin cursor-grab"
         >
           <div className="flex min-w-max gap-6">
             {COLUMNS.map((status) => (
@@ -208,22 +247,6 @@ export function Board() {
             ))}
           </div>
         </div>
-
-        <button
-          onClick={() => scrollByOffset(-360)}
-          aria-label="scroll-left"
-          className="hidden lg:flex items-center justify-center absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 rounded-full shadow-sm border"
-        >
-          <ChevronLeft className="w-4 h-4 text-slate-600" />
-        </button>
-
-        <button
-          onClick={() => scrollByOffset(360)}
-          aria-label="scroll-right"
-          className="hidden lg:flex items-center justify-center absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 rounded-full shadow-sm border"
-        >
-          <ChevronRight className="w-4 h-4 text-slate-600" />
-        </button>
       </div>
 
       <TaskModal

@@ -67,6 +67,7 @@ export function Board() {
   const isPanningRef = useRef(false)
   const panStartXRef = useRef(0)
   const panStartScrollRef = useRef(0)
+  const isPotentialPanRef = useRef(false)
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = containerRef.current
@@ -76,7 +77,8 @@ export function Board() {
     if (target.closest && target.closest('[draggable]')) return
     // only enable custom panning for mouse pointers (desktop)
     if ((e as any).pointerType && (e as any).pointerType !== 'mouse') return
-    isPanningRef.current = true
+    // mark potential pan; we'll activate after threshold movement
+    isPotentialPanRef.current = true
     panStartXRef.current = e.clientX
     panStartScrollRef.current = el.scrollLeft
     try {
@@ -87,9 +89,33 @@ export function Board() {
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isPanningRef.current || !containerRef.current) return
-    const dx = e.clientX - panStartXRef.current
     const el = containerRef.current
+    if (!el) return
+    const dxTotal = e.clientX - panStartXRef.current
+    // dynamic threshold: make smaller when showEstimatedOnly is active
+    const PAN_THRESHOLD = showEstimatedOnly ? 4 : 8
+
+    if (!isPanningRef.current && isPotentialPanRef.current) {
+      if (Math.abs(dxTotal) >= PAN_THRESHOLD) {
+        isPanningRef.current = true
+        // reset start points so movement feels smooth from this moment
+        panStartXRef.current = e.clientX
+        panStartScrollRef.current = el.scrollLeft
+        // if in 'Tempo stimato' mode, disable text selection while panning
+        if (showEstimatedOnly) {
+          try {
+            document.body.style.userSelect = 'none'
+          } catch (err) {
+            /* ignore */
+          }
+        }
+      } else {
+        return
+      }
+    }
+
+    if (!isPanningRef.current) return
+    const dx = e.clientX - panStartXRef.current
     const desired = panStartScrollRef.current - dx * PAN_SENSITIVITY
     const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth)
     // clamp to bounds to avoid overscroll bounce
@@ -97,8 +123,15 @@ export function Board() {
   }
 
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isPanningRef.current) return
+    if (!isPanningRef.current && !isPotentialPanRef.current) return
     isPanningRef.current = false
+    isPotentialPanRef.current = false
+    // restore text selection if we disabled it
+    try {
+      document.body.style.userSelect = ''
+    } catch (err) {
+      /* ignore */
+    }
     const target = e.target as HTMLElement
     try {
       target.releasePointerCapture?.(e.pointerId)

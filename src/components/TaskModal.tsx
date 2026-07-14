@@ -24,6 +24,7 @@ const emptyForm = {
   status: 'todo' as TaskStatus,
   priority: 'medium' as TaskPriority,
   assigneeId: '' as string,
+  categoryId: '' as string,
   dueDate: '',
   tags: '',
 }
@@ -34,7 +35,7 @@ export function TaskModal({
   open,
   onClose,
 }: TaskModalProps) {
-  const { members, addTask, updateTask, deleteTask } = useApp()
+  const { members, categories, addTask, updateTask, deleteTask } = useApp()
   const isEditing = !!task
 
   const [form, setForm] = useState(emptyForm)
@@ -50,6 +51,7 @@ export function TaskModal({
         status: task.status,
         priority: task.priority,
         assigneeId: task.assigneeId ?? '',
+        categoryId: task.categoryId ?? '',
         dueDate: task.dueDate ?? '',
         tags: task.tags.join(', '),
       })
@@ -76,6 +78,7 @@ export function TaskModal({
       status: form.status,
       priority: form.priority,
       assigneeId: form.assigneeId || null,
+      categoryId: form.categoryId || null,
       dueDate: form.dueDate || null,
       tags: form.tags
         .split(',')
@@ -253,17 +256,36 @@ export function TaskModal({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Tag
-            </label>
-            <input
-              type="text"
-              value={form.tags}
-              onChange={(e) => setForm({ ...form, tags: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="backend, urgent (separati da virgola)"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Categoria
+              </label>
+              <select
+                value={form.categoryId}
+                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Nessuna categoria</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Tag
+              </label>
+              <input
+                type="text"
+                value={form.tags}
+                onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="backend, urgent (separati da virgola)"
+              />
+            </div>
           </div>
 
           <div>

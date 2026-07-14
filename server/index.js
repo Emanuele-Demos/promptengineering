@@ -3,6 +3,7 @@ import cors from 'cors';
 import { initDb, resetDb } from './config/db.js';
 import { getMembers, createMember, updateMember, deleteMember } from './controllers/membersController.js';
 import { getFolders, createFolder, updateFolder, deleteFolder } from './controllers/foldersController.js';
+import { getCategories, createCategory, updateCategory, deleteCategory } from './controllers/categoriesController.js';
 import { getTasks, createTask, updateTask, deleteTask } from './controllers/tasksController.js';
 
 const app = express();
@@ -32,6 +33,12 @@ app.get('/api/folders', getFolders);
 app.post('/api/folders', createFolder);
 app.put('/api/folders/:id', updateFolder);
 app.delete('/api/folders/:id', deleteFolder);
+
+// Categorie
+app.get('/api/categories', getCategories);
+app.post('/api/categories', createCategory);
+app.put('/api/categories/:id', updateCategory);
+app.delete('/api/categories/:id', deleteCategory);
 
 // Task
 app.get('/api/tasks', getTasks);

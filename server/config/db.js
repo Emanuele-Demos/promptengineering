@@ -28,6 +28,13 @@ const initialFolders = [
   { id: 'f3', name: 'Pianificazione', color: '#14b8a6' },
 ];
 
+const initialCategories = [
+  { id: 'c1', name: 'Lavoro', color: '#6366f1' },
+  { id: 'c2', name: 'Università', color: '#0ea5e9' },
+  { id: 'c3', name: 'Personale', color: '#f59e0b' },
+  { id: 'c4', name: 'Casa', color: '#10b981' },
+];
+
 const initialTasks = [
   {
     id: 't1',
@@ -131,7 +138,16 @@ export function initDb() {
       )
     `);
 
-    // 3. Tabella tasks (aggiornata con folderId)
+    // 3. Tabella categories
+    db.run(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        color TEXT NOT NULL
+      )
+    `);
+
+    // 4. Tabella tasks (aggiornata con folderId e categoryId)
     db.run(`
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
@@ -141,12 +157,14 @@ export function initDb() {
         priority TEXT NOT NULL,
         assigneeId TEXT,
         folderId TEXT,
+        categoryId TEXT,
         dueDate TEXT,
         tags TEXT NOT NULL DEFAULT '[]',
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL,
         FOREIGN KEY (assigneeId) REFERENCES members(id) ON DELETE SET NULL,
-        FOREIGN KEY (folderId) REFERENCES folders(id) ON DELETE SET NULL
+        FOREIGN KEY (folderId) REFERENCES folders(id) ON DELETE SET NULL,
+        FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL
       )
     `);
 
@@ -169,11 +187,20 @@ export function initDb() {
       }
     });
 
+    db.get('SELECT COUNT(*) as count FROM categories', (err, row) => {
+      if (!err && row.count === 0) {
+        const stmt = db.prepare('INSERT INTO categories (id, name, color) VALUES (?, ?, ?)');
+        initialCategories.forEach((c) => stmt.run(c.id, c.name, c.color));
+        stmt.finalize();
+        console.log('Seed categories completato.');
+      }
+    });
+
     db.get('SELECT COUNT(*) as count FROM tasks', (err, row) => {
       if (!err && row.count === 0) {
-        const stmt = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, dueDate, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        const stmt = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
         initialTasks.forEach((t) => {
-          stmt.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.dueDate, t.tags, t.createdAt, t.updatedAt);
+          stmt.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.categoryId ?? null, t.dueDate, t.tags, t.createdAt, t.updatedAt);
         });
         stmt.finalize();
         console.log('Seed tasks completato.');
@@ -185,6 +212,7 @@ export function initDb() {
 export function resetDb(callback) {
   db.serialize(() => {
     db.run('DELETE FROM tasks');
+    db.run('DELETE FROM categories');
     db.run('DELETE FROM folders');
     db.run('DELETE FROM members');
 
@@ -196,9 +224,13 @@ export function resetDb(callback) {
     initialFolders.forEach((f) => stmtF.run(f.id, f.name, f.color));
     stmtF.finalize();
 
-    const stmtT = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, dueDate, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const stmtC = db.prepare('INSERT INTO categories (id, name, color) VALUES (?, ?, ?)');
+    initialCategories.forEach((c) => stmtC.run(c.id, c.name, c.color));
+    stmtC.finalize();
+
+    const stmtT = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     initialTasks.forEach((t) => {
-      stmtT.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.dueDate, t.tags, t.createdAt, t.updatedAt);
+      stmtT.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.categoryId ?? null, t.dueDate, t.tags, t.createdAt, t.updatedAt);
     });
     stmtT.finalize();
 

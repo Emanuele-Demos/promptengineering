@@ -6,6 +6,7 @@ import { Board } from './pages/Board'
 import { Team } from './pages/Team'
 import { CalendarPage } from './pages/CalendarPage'
 import { GestioneStato } from './pages/GestioneStato'
+import { CategoriesPage } from './pages/CategoriesPage'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
             <Route path="team" element={<Team />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="gestione_stato" element={<GestioneStato />} />
+            <Route path="categories" element={<CategoriesPage />} />
           </Route>
         </Routes>
       </AppProvider>

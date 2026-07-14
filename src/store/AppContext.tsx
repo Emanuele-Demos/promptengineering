@@ -15,6 +15,7 @@ import type {
   TaskStatus,
   TeamMember,
   Folder,
+  Category,
 } from '../types'
 import { MEMBER_COLORS } from '../types'
 
@@ -31,6 +32,9 @@ interface AppContextValue extends AppState {
   addFolder: (folder: Omit<Folder, 'id'>) => void
   updateFolder: (id: string, updates: Partial<Folder>) => void
   deleteFolder: (id: string) => void
+  addCategory: (category: Omit<Category, 'id'>) => void
+  updateCategory: (id: string, updates: Partial<Category>) => void
+  deleteCategory: (id: string) => void
   resetData: () => void
   getMember: (id: string | null) => TeamMember | undefined
   tasksByStatus: (status: TaskStatus) => Task[]
@@ -51,16 +55,17 @@ interface AppContextValue extends AppState {
 const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>({ tasks: [], members: [], folders: [] })
+  const [state, setState] = useState<AppState>({ tasks: [], members: [], folders: [], categories: [] })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const [resTasks, resMembers, resFolders] = await Promise.all([
+        const [resTasks, resMembers, resFolders, resCategories] = await Promise.all([
           fetch(`${API_BASE}/tasks`).then((r) => r.json()),
           fetch(`${API_BASE}/members`).then((r) => r.json()),
           fetch(`${API_BASE}/folders`).then((r) => r.json()),
+          fetch(`${API_BASE}/categories`).then((r) => r.json()),
         ])
 
         const normalizedTasks = (resTasks as Task[]).map((task) => ({
@@ -70,7 +75,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           attachments: task.attachments ?? [],
         }))
 
-        setState({ tasks: normalizedTasks, members: resMembers, folders: resFolders })
+        setState({ tasks: normalizedTasks, members: resMembers, folders: resFolders, categories: resCategories })
       } catch (err) {
         console.error('Errore nel caricamento dei dati dal server:', err)
       } finally {
@@ -223,15 +228,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }).catch((err) => console.error("Errore durante l'eliminazione della cartella:", err))
   }, [])
 
+  const addCategory = useCallback((category: Omit<Category, 'id'>) => {
+    const newId = uuid()
+    const newCategory = { ...category, id: newId }
+
+    setState((prev) => ({
+      ...prev,
+      categories: [...prev.categories, newCategory],
+    }))
+
+    fetch(`${API_BASE}/categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCategory),
+    }).catch((err) => console.error('Errore durante la creazione della categoria:', err))
+  }, [])
+
+  const updateCategory = useCallback((id: string, updates: Partial<Category>) => {
+    setState((prev) => ({
+      ...prev,
+      categories: prev.categories.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+    }))
+
+    fetch(`${API_BASE}/categories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch((err) => console.error("Errore durante l'aggiornamento della categoria:", err))
+  }, [])
+
+  const deleteCategory = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      categories: prev.categories.filter((c) => c.id !== id),
+      tasks: prev.tasks.map((t) => (t.categoryId === id ? { ...t, categoryId: null } : t)),
+    }))
+
+    fetch(`${API_BASE}/categories/${id}`, {
+      method: 'DELETE',
+    }).catch((err) => console.error("Errore durante l'eliminazione della categoria:", err))
+  }, [])
+
   const resetData = useCallback(async () => {
     try {
       await fetch(`${API_BASE}/reset`, { method: 'POST' })
-      const [resTasks, resMembers, resFolders] = await Promise.all([
+      const [resTasks, resMembers, resFolders, resCategories] = await Promise.all([
         fetch(`${API_BASE}/tasks`).then((r) => r.json()),
         fetch(`${API_BASE}/members`).then((r) => r.json()),
         fetch(`${API_BASE}/folders`).then((r) => r.json()),
+        fetch(`${API_BASE}/categories`).then((r) => r.json()),
       ])
-      setState({ tasks: resTasks, members: resMembers, folders: resFolders })
+      setState({ tasks: resTasks, members: resMembers, folders: resFolders, categories: resCategories })
     } catch (err) {
       console.error('Errore durante il reset dei dati:', err)
     }
@@ -283,6 +330,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addFolder,
       updateFolder,
       deleteFolder,
+      addCategory,
+      updateCategory,
+      deleteCategory,
       resetData,
       getMember,
       tasksByStatus,
@@ -302,6 +352,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addFolder,
       updateFolder,
       deleteFolder,
+      addCategory,
+      updateCategory,
+      deleteCategory,
       resetData,
       getMember,
       tasksByStatus,

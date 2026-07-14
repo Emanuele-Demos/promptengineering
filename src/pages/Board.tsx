@@ -8,19 +8,24 @@ import { TaskModal } from '../components/TaskModal'
 const COLUMNS: TaskStatus[] = ['todo', 'in_progress', 'review', 'done']
 
 export function Board() {
-  const { tasks, moveTask } = useApp()
+  const { tasks, categories, moveTask } = useApp()
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('todo')
   const [search, setSearch] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('all')
   const [draggingId, setDraggingId] = useState<string | null>(null)
 
-  const filteredTasks = tasks.filter(
-    (t) =>
+  const filteredTasks = tasks.filter((t) => {
+    const matchesSearch =
       t.title.toLowerCase().includes(search.toLowerCase()) ||
       t.description.toLowerCase().includes(search.toLowerCase()) ||
-      t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())),
-  )
+      t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
+
+    const matchesCategory = selectedCategory === 'all' || t.categoryId === selectedCategory
+
+    return matchesSearch && matchesCategory
+  })
 
   const openCreate = (status: TaskStatus) => {
     setSelectedTask(null)
@@ -60,6 +65,18 @@ export function Board() {
               className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">Tutte le categorie</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
           <button
             onClick={() => openCreate('todo')}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shrink-0"

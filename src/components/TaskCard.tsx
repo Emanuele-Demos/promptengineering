@@ -18,9 +18,10 @@ export function TaskCard({
   draggable = false,
   onDragStart,
 }: TaskCardProps) {
-  const { getMember } = useApp()
+  const { getMember, categories } = useApp()
   const assignee = getMember(task.assigneeId)
   const overdue = isOverdue(task.dueDate, task.status)
+  const category = categories.find((item) => item.id === task.categoryId)
 
   return (
     <div
@@ -54,6 +55,14 @@ export function TaskCard({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <PriorityBadge priority={task.priority} />
+              {category && (
+                <span
+                  className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
+                  style={{ backgroundColor: category.color }}
+                >
+                  {category.name}
+                </span>
+              )}
               {task.attachments && task.attachments.length > 0 && (
                 <span
                   className="flex items-center gap-0.5 text-xs text-slate-400"

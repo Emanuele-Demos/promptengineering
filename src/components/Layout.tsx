@@ -28,6 +28,10 @@ export function Layout() {
           <NavLink to="/gestione_stato" className="menu-item">
             Gestione Stato
           </NavLink>
+
+          <NavLink to="/categories" className="menu-item">
+            Categorie
+          </NavLink>
         </nav>
       </aside>
 

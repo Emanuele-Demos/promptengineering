@@ -50,7 +50,10 @@ function calculateNextDate(dueDate, repeatType, repeatEvery = 1, repeatDays = []
 }
 
 export const getTasks = (req, res) => {
-  db.all('SELECT * FROM tasks', [], (err, rows) => {
+  const includeArchived = req.query.archived === 'true';
+  const sql = includeArchived ? 'SELECT * FROM tasks WHERE archived = 1' : 'SELECT * FROM tasks WHERE archived = 0 OR archived IS NULL';
+
+  db.all(sql, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     db.all('SELECT * FROM attachments', [], (attachmentsErr, attachments) => {
       if (attachmentsErr) return res.status(500).json({ error: attachmentsErr.message });
@@ -62,6 +65,7 @@ export const getTasks = (req, res) => {
         tags: parseJson(r.tags, []),
         repeatDays: parseJson(r.repeatDays, []),
         repeatStopped: Boolean(r.repeatStopped),
+        archived: Boolean(r.archived),
         attachments: attachments
           .filter((attachment) => attachment.taskId === r.id)
           .map((attachment) => ({
@@ -88,7 +92,10 @@ export const createTask = (req, res) => {
     assigneeId,
     folderId,
     categoryId,
+    projectId,
     dueDate,
+    archived = false,
+    estimatedTime,
     reminderDate,
     repeatType = 'none',
     repeatEvery,
@@ -109,8 +116,8 @@ export const createTask = (req, res) => {
   const nextDate = repeatNextDate ?? calculateNextDate(dueDate, repeatType, repeatEvery, repeatDays);
   db.run(
     `INSERT INTO tasks
-      (id, title, description, notes, links, status, priority, assigneeId, folderId, categoryId, dueDate, reminderDate, repeatType, repeatEvery, repeatEnd, repeatDays, repeatMaxOccurrences, repeatCount, repeatNextDate, repeatStopped, repeatParentId, tags, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, title, description, notes, links, status, priority, assigneeId, folderId, categoryId, projectId, dueDate, archived, estimatedTime, reminderDate, repeatType, repeatEvery, repeatEnd, repeatDays, repeatMaxOccurrences, repeatCount, repeatNextDate, repeatStopped, repeatParentId, tags, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       title,
@@ -122,7 +129,10 @@ export const createTask = (req, res) => {
       assigneeId,
       folderId,
       categoryId ?? null,
+      projectId ?? null,
       dueDate,
+      archived ? 1 : 0,
+      estimatedTime ?? null,
       reminderDate ?? null,
       repeatType,
       repeatEvery ?? null,
@@ -150,7 +160,10 @@ export const createTask = (req, res) => {
         assigneeId,
         folderId,
         categoryId: categoryId ?? null,
+        projectId: projectId ?? null,
         dueDate,
+        archived,
+        estimatedTime: estimatedTime ?? null,
         reminderDate: reminderDate ?? null,
         repeatType,
         repeatEvery: repeatEvery ?? null,
@@ -185,6 +198,9 @@ export const updateTask = (req, res) => {
   }
   if (Object.prototype.hasOwnProperty.call(updates, 'repeatStopped')) {
     updates.repeatStopped = updates.repeatStopped ? 1 : 0;
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'archived')) {
+    updates.archived = updates.archived ? 1 : 0;
   }
   if (
     Object.prototype.hasOwnProperty.call(req.body, 'dueDate') ||
@@ -223,6 +239,9 @@ export const updateTask = (req, res) => {
     }
     if (Object.prototype.hasOwnProperty.call(responseData, 'repeatStopped')) {
       responseData.repeatStopped = Boolean(responseData.repeatStopped);
+    }
+    if (Object.prototype.hasOwnProperty.call(responseData, 'archived')) {
+      responseData.archived = Boolean(responseData.archived);
     }
     res.json({ id, ...responseData });
   });

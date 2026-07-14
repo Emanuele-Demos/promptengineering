@@ -1,6 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
+  Archive,
+  FolderKanban,
   Kanban,
   Tags,
   Users,
@@ -12,11 +14,13 @@ const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/board', label: 'Board', icon: Kanban },
   { to: '/team', label: 'Team', icon: Users },
+  { to: '/projects', label: 'Progetti', icon: FolderKanban },
   { to: '/categories', label: 'Categorie', icon: Tags },
+  { to: '/archive', label: 'Archivio', icon: Archive },
 ]
 
 export function Sidebar() {
-  const { stats } = useApp()
+  const { stats, projects, tasks } = useApp()
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 bg-white border-r border-slate-200 flex-col">
@@ -53,6 +57,35 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      <div className="px-4 pb-4">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+          Progetti
+        </p>
+        <div className="space-y-2">
+          {projects.slice(0, 4).map((project) => {
+            const projectTasks = tasks.filter((task) => task.projectId === project.id)
+            const completed = projectTasks.filter((task) => task.status === 'done').length
+            const progress = projectTasks.length > 0 ? Math.round((completed / projectTasks.length) * 100) : 0
+
+            return (
+              <NavLink
+                key={project.id}
+                to="/projects"
+                className="block rounded-lg px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+              >
+                <div className="flex justify-between gap-2">
+                  <span className="truncate">{project.name}</span>
+                  <span>{progress}%</span>
+                </div>
+                <div className="h-1 bg-slate-100 rounded-full overflow-hidden mt-1">
+                  <div className="h-full bg-indigo-600" style={{ width: `${progress}%` }} />
+                </div>
+              </NavLink>
+            )
+          })}
+        </div>
+      </div>
 
       <div className="p-4 border-t border-slate-200">
         <div className="bg-slate-50 rounded-xl p-3 space-y-2">

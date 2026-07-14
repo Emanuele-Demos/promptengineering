@@ -68,8 +68,8 @@ function createOccurrence(task) {
   db.serialize(() => {
     db.run(
       `INSERT INTO tasks
-        (id, title, description, notes, links, status, priority, assigneeId, folderId, categoryId, dueDate, reminderDate, repeatType, repeatEvery, repeatEnd, repeatDays, repeatMaxOccurrences, repeatCount, repeatNextDate, repeatStopped, repeatParentId, tags, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, title, description, notes, links, status, priority, assigneeId, folderId, categoryId, projectId, dueDate, archived, estimatedTime, reminderDate, repeatType, repeatEvery, repeatEnd, repeatDays, repeatMaxOccurrences, repeatCount, repeatNextDate, repeatStopped, repeatParentId, tags, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         occurrenceId,
         task.title,
@@ -81,7 +81,10 @@ function createOccurrence(task) {
         task.assigneeId,
         task.folderId,
         task.categoryId,
+        task.projectId,
         task.repeatNextDate,
+        0,
+        task.estimatedTime,
         null,
         'none',
         null,

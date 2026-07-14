@@ -25,7 +25,10 @@ const emptyForm = {
   priority: 'medium' as TaskPriority,
   assigneeId: '' as string,
   categoryId: '' as string,
+  projectId: '' as string,
   dueDate: '',
+  estimatedTimeValue: '',
+  estimatedTimeUnit: 'hours',
   reminderOption: '',
   customReminderDate: '',
   isRecurring: false,
@@ -36,6 +39,24 @@ const emptyForm = {
   repeatMaxOccurrences: '',
   repeatStopped: false,
   tags: '',
+}
+
+function estimatedToMinutes(value: string, unit: string) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric) || numeric <= 0) return null
+  if (unit === 'minutes') return Math.round(numeric)
+  if (unit === 'hours') return Math.round(numeric * 60)
+  if (unit === 'days') return Math.round(numeric * 60 * 8)
+  if (unit === 'weeks') return Math.round(numeric * 60 * 8 * 5)
+  return Math.round(numeric)
+}
+
+function splitEstimatedTime(minutes: number | null | undefined) {
+  if (!minutes) return { value: '', unit: 'hours' }
+  if (minutes % 2400 === 0) return { value: String(minutes / 2400), unit: 'weeks' }
+  if (minutes % 480 === 0) return { value: String(minutes / 480), unit: 'days' }
+  if (minutes % 60 === 0) return { value: String(minutes / 60), unit: 'hours' }
+  return { value: String(minutes), unit: 'minutes' }
 }
 
 const REMINDER_OPTIONS = [
@@ -96,9 +117,11 @@ export function TaskModal({
   const {
     members,
     categories,
+    projects,
     addTask,
     updateTask,
     deleteTask,
+    archiveTask,
     uploadTaskAttachments,
     deleteAttachment,
   } = useApp()
@@ -118,7 +141,10 @@ export function TaskModal({
         priority: task.priority,
         assigneeId: task.assigneeId ?? '',
         categoryId: task.categoryId ?? '',
+        projectId: task.projectId ?? '',
         dueDate: task.dueDate ?? '',
+        estimatedTimeValue: splitEstimatedTime(task.estimatedTime).value,
+        estimatedTimeUnit: splitEstimatedTime(task.estimatedTime).unit,
         reminderOption: task.reminderDate ? 'custom' : '',
         customReminderDate: toDateTimeLocal(task.reminderDate),
         isRecurring: !!task.repeatType && task.repeatType !== 'none',
@@ -154,7 +180,9 @@ export function TaskModal({
       priority: form.priority,
       assigneeId: form.assigneeId || null,
       categoryId: form.categoryId || null,
+      projectId: form.projectId || null,
       dueDate: form.dueDate || null,
+      estimatedTime: estimatedToMinutes(form.estimatedTimeValue, form.estimatedTimeUnit),
       reminderDate: buildReminderDate(form.dueDate, form.reminderOption, form.customReminderDate),
       repeatType: form.isRecurring ? form.repeatType : 'none',
       repeatEvery: form.isRecurring ? Number(form.repeatEvery || 1) : null,
@@ -179,6 +207,13 @@ export function TaskModal({
   const handleDelete = () => {
     if (task && confirm('Eliminare questo task?')) {
       deleteTask(task.id)
+      onClose()
+    }
+  }
+
+  const handleArchive = () => {
+    if (task && confirm('Archiviare questo task?')) {
+      archiveTask(task.id)
       onClose()
     }
   }
@@ -353,6 +388,24 @@ export function TaskModal({
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Progetto
+            </label>
+            <select
+              value={form.projectId}
+              onChange={(e) => setForm({ ...form, projectId: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            >
+              <option value="">Nessun progetto</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -406,6 +459,42 @@ export function TaskModal({
               />
             </div>
           )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Tempo stimato
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={form.estimatedTimeValue}
+                onChange={(e) =>
+                  setForm({ ...form, estimatedTimeValue: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Es. 5"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Unità
+              </label>
+              <select
+                value={form.estimatedTimeUnit}
+                onChange={(e) =>
+                  setForm({ ...form, estimatedTimeUnit: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              >
+                <option value="minutes">Minuti</option>
+                <option value="hours">Ore</option>
+                <option value="days">Giorni</option>
+                <option value="weeks">Settimane</option>
+              </select>
+            </div>
+          </div>
 
           <div className="rounded-xl border border-slate-200 p-3 space-y-3">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -552,14 +641,23 @@ export function TaskModal({
 
           <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
             {isEditing ? (
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full sm:w-auto"
-              >
-                <Trash2 className="w-4 h-4" />
-                Elimina
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleArchive}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                >
+                  Archivia
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Elimina
+                </button>
+              </div>
             ) : (
               <span className="hidden sm:block" />
             )}

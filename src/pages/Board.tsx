@@ -7,22 +7,41 @@ import { TaskModal } from '../components/TaskModal'
 
 const COLUMNS: TaskStatus[] = ['todo', 'in_progress', 'review', 'done']
 
+function formatMinutes(minutes: number) {
+  if (minutes >= 2400 && minutes % 2400 === 0) return `${minutes / 2400} settimane`
+  if (minutes >= 480 && minutes % 480 === 0) return `${minutes / 480} giorni`
+  if (minutes >= 60) return `${Math.round((minutes / 60) * 10) / 10} ore`
+  return `${minutes} minuti`
+}
+
 export function Board() {
-  const { tasks, categories, moveTask } = useApp()
+  const { tasks, categories, projects, moveTask } = useApp()
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('todo')
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [projectFilter, setProjectFilter] = useState('')
+  const [sortByEstimate, setSortByEstimate] = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
 
-  const filteredTasks = tasks.filter(
-    (t) =>
-      (categoryFilter === '' || t.categoryId === categoryFilter) &&
-      (t.title.toLowerCase().includes(search.toLowerCase()) ||
-        t.description.toLowerCase().includes(search.toLowerCase()) ||
-        t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))),
-  )
+  const filteredTasks = tasks
+    .filter(
+      (t) =>
+        (categoryFilter === '' || t.categoryId === categoryFilter) &&
+        (projectFilter === '' || t.projectId === projectFilter) &&
+        (t.title.toLowerCase().includes(search.toLowerCase()) ||
+          t.description.toLowerCase().includes(search.toLowerCase()) ||
+          t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))),
+    )
+    .sort((a, b) => {
+      if (!sortByEstimate) return 0
+      return (a.estimatedTime ?? Number.MAX_SAFE_INTEGER) - (b.estimatedTime ?? Number.MAX_SAFE_INTEGER)
+    })
+
+  const totalOpenEstimate = filteredTasks
+    .filter((task) => task.status !== 'done')
+    .reduce((total, task) => total + (task.estimatedTime ?? 0), 0)
 
   const openCreate = (status: TaskStatus) => {
     setSelectedTask(null)
@@ -74,6 +93,29 @@ export function Board() {
               </option>
             ))}
           </select>
+          <select
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            className="w-full sm:w-56 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+          >
+            <option value="">Tutti i progetti</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setSortByEstimate((value) => !value)}
+            className={`px-3 py-2 border rounded-lg text-sm transition-colors ${
+              sortByEstimate
+                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-200'
+            }`}
+          >
+            Tempo stimato
+          </button>
           <button
             onClick={() => openCreate('todo')}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shrink-0"
@@ -81,6 +123,9 @@ export function Board() {
             <Plus className="w-4 h-4" />
             <span className="sm:inline">Nuovo task</span>
           </button>
+        </div>
+        <div className="text-sm text-slate-500">
+          Totale stimato task aperti: <span className="font-semibold text-slate-700">{formatMinutes(totalOpenEstimate)}</span>
         </div>
       </header>
 

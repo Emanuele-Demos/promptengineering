@@ -16,6 +16,7 @@ import type {
   TeamMember,
   Folder,
   Category,
+  Project,
   AppNotification,
 } from '../types'
 import { MEMBER_COLORS } from '../types'
@@ -29,9 +30,13 @@ function taskPayload(task: Partial<Task>) {
 }
 
 interface AppContextValue extends AppState {
+  archivedTasks: Task[]
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void
   updateTask: (id: string, updates: Partial<Task>) => void
   deleteTask: (id: string) => void
+  archiveTask: (id: string) => void
+  restoreTask: (id: string) => void
+  permanentlyDeleteTask: (id: string) => void
   moveTask: (id: string, status: TaskStatus) => void
   uploadTaskAttachments: (taskId: string, files: File[]) => Promise<void>
   deleteAttachment: (taskId: string, attachmentId: string) => void
@@ -44,12 +49,16 @@ interface AppContextValue extends AppState {
   addCategory: (category: Omit<Category, 'id'>) => void
   updateCategory: (id: string, updates: Partial<Category>) => void
   deleteCategory: (id: string) => void
+  addProject: (project: Omit<Project, 'id'>) => void
+  updateProject: (id: string, updates: Partial<Project>) => void
+  deleteProject: (id: string) => void
   refreshNotifications: () => Promise<void>
   markNotificationRead: (id: string) => void
   deleteNotification: (id: string) => void
   resetData: () => void
   getMember: (id: string | null) => TeamMember | undefined
   getCategory: (id: string | null | undefined) => Category | undefined
+  getProject: (id: string | null | undefined) => Project | undefined
   tasksByStatus: (status: TaskStatus) => Task[]
   overdueTasks: Task[]
   loading: boolean
@@ -68,7 +77,8 @@ interface AppContextValue extends AppState {
 const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>({ tasks: [], members: [], folders: [], categories: [], notifications: [] })
+  const [state, setState] = useState<AppState>({ tasks: [], members: [], folders: [], categories: [], projects: [], notifications: [] })
+  const [archivedTasks, setArchivedTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
 
   const refreshNotifications = useCallback(async () => {
@@ -126,22 +136,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function load() {
       try {
-        const [resTasks, resMembers, resFolders, resCategories, resNotifications] = await Promise.all([
+        const [resTasks, resArchivedTasks, resMembers, resFolders, resCategories, resProjects, resNotifications] = await Promise.all([
           fetch(`${API_BASE}/tasks`).then((r) => r.json()),
+          fetch(`${API_BASE}/tasks?archived=true`).then((r) => r.json()),
           fetch(`${API_BASE}/members`).then((r) => r.json()),
           fetch(`${API_BASE}/folders`).then((r) => r.json()),
           fetch(`${API_BASE}/categories`).then((r) => r.json()),
+          fetch(`${API_BASE}/projects`).then((r) => r.json()),
           fetch(`${API_BASE}/notifications`).then((r) => r.json()),
         ])
 
-        const normalizedTasks = (resTasks as Task[]).map((task) => ({
+        const normalizeTask = (task: Task) => ({
           ...task,
           notes: task.notes ?? '',
           links: task.links ?? [],
           attachments: task.attachments ?? [],
-        }))
+        })
+        const normalizedTasks = (resTasks as Task[]).map(normalizeTask)
+        const normalizedArchivedTasks = (resArchivedTasks as Task[]).map(normalizeTask)
 
-        setState({ tasks: normalizedTasks, members: resMembers, folders: resFolders, categories: resCategories, notifications: resNotifications })
+        setState({ tasks: normalizedTasks, members: resMembers, folders: resFolders, categories: resCategories, projects: resProjects, notifications: resNotifications })
+        setArchivedTasks(normalizedArchivedTasks)
       } catch (err) {
         console.error('Errore nel caricamento dei dati dal server:', err)
       } finally {
@@ -202,6 +217,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
     fetch(`${API_BASE}/tasks/${id}`, {
       method: 'DELETE',
     }).catch((err) => console.error("Errore durante l'eliminazione del task:", err))
+  }, [])
+
+  const archiveTask = useCallback((id: string) => {
+    let archivedTask: Task | undefined
+
+    setState((prev) => {
+      archivedTask = prev.tasks.find((task) => task.id === id)
+      return {
+        ...prev,
+        tasks: prev.tasks.filter((task) => task.id !== id),
+      }
+    })
+
+    if (archivedTask) {
+      setArchivedTasks((prev) => [{ ...archivedTask!, archived: true }, ...prev])
+    }
+
+    fetch(`${API_BASE}/tasks/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived: true, updatedAt: new Date().toISOString() }),
+    }).catch((err) => console.error("Errore durante l'archiviazione del task:", err))
+  }, [])
+
+  const restoreTask = useCallback((id: string) => {
+    let restoredTask: Task | undefined
+
+    setArchivedTasks((prev) => {
+      restoredTask = prev.find((task) => task.id === id)
+      return prev.filter((task) => task.id !== id)
+    })
+
+    if (restoredTask) {
+      setState((prev) => ({
+        ...prev,
+        tasks: [{ ...restoredTask!, archived: false }, ...prev.tasks],
+      }))
+    }
+
+    fetch(`${API_BASE}/tasks/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived: false, updatedAt: new Date().toISOString() }),
+    }).catch((err) => console.error('Errore durante il ripristino del task:', err))
+  }, [])
+
+  const permanentlyDeleteTask = useCallback((id: string) => {
+    setArchivedTasks((prev) => prev.filter((task) => task.id !== id))
+
+    fetch(`${API_BASE}/tasks/${id}`, {
+      method: 'DELETE',
+    }).catch((err) => console.error("Errore durante l'eliminazione definitiva del task:", err))
   }, [])
 
   const moveTask = useCallback(
@@ -341,6 +408,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }).catch((err) => console.error("Errore durante l'eliminazione della categoria:", err))
   }, [])
 
+  const addProject = useCallback((project: Omit<Project, 'id'>) => {
+    const newProject = { ...project, id: uuid() }
+
+    setState((prev) => ({
+      ...prev,
+      projects: [...prev.projects, newProject],
+    }))
+
+    fetch(`${API_BASE}/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newProject),
+    }).catch((err) => console.error('Errore durante la creazione del progetto:', err))
+  }, [])
+
+  const updateProject = useCallback((id: string, updates: Partial<Project>) => {
+    setState((prev) => ({
+      ...prev,
+      projects: prev.projects.map((project) => (project.id === id ? { ...project, ...updates } : project)),
+    }))
+
+    fetch(`${API_BASE}/projects/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch((err) => console.error("Errore durante l'aggiornamento del progetto:", err))
+  }, [])
+
+  const deleteProject = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      projects: prev.projects.filter((project) => project.id !== id),
+      tasks: prev.tasks.map((task) => (task.projectId === id ? { ...task, projectId: null } : task)),
+    }))
+
+    fetch(`${API_BASE}/projects/${id}`, {
+      method: 'DELETE',
+    }).catch((err) => console.error("Errore durante l'eliminazione del progetto:", err))
+  }, [])
+
   const markNotificationRead = useCallback((id: string) => {
     setState((prev) => ({
       ...prev,
@@ -366,14 +473,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const resetData = useCallback(async () => {
     try {
       await fetch(`${API_BASE}/reset`, { method: 'POST' })
-      const [resTasks, resMembers, resFolders, resCategories, resNotifications] = await Promise.all([
+      const [resTasks, resArchivedTasks, resMembers, resFolders, resCategories, resProjects, resNotifications] = await Promise.all([
         fetch(`${API_BASE}/tasks`).then((r) => r.json()),
+        fetch(`${API_BASE}/tasks?archived=true`).then((r) => r.json()),
         fetch(`${API_BASE}/members`).then((r) => r.json()),
         fetch(`${API_BASE}/folders`).then((r) => r.json()),
         fetch(`${API_BASE}/categories`).then((r) => r.json()),
+        fetch(`${API_BASE}/projects`).then((r) => r.json()),
         fetch(`${API_BASE}/notifications`).then((r) => r.json()),
       ])
-      setState({ tasks: resTasks, members: resMembers, folders: resFolders, categories: resCategories, notifications: resNotifications })
+      setState({ tasks: resTasks, members: resMembers, folders: resFolders, categories: resCategories, projects: resProjects, notifications: resNotifications })
+      setArchivedTasks(resArchivedTasks)
     } catch (err) {
       console.error('Errore durante il reset dei dati:', err)
     }
@@ -387,6 +497,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getCategory = useCallback(
     (id: string | null | undefined) => (id ? state.categories.find((c) => c.id === id) : undefined),
     [state.categories],
+  )
+
+  const getProject = useCallback(
+    (id: string | null | undefined) => (id ? state.projects.find((project) => project.id === id) : undefined),
+    [state.projects],
   )
 
   const tasksByStatus = useCallback(
@@ -420,9 +535,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       ...state,
+      archivedTasks,
       addTask,
       updateTask,
       deleteTask,
+      archiveTask,
+      restoreTask,
+      permanentlyDeleteTask,
       moveTask,
       uploadTaskAttachments,
       deleteAttachment,
@@ -435,12 +554,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addCategory,
       updateCategory,
       deleteCategory,
+      addProject,
+      updateProject,
+      deleteProject,
       refreshNotifications,
       markNotificationRead,
       deleteNotification,
       resetData,
       getMember,
       getCategory,
+      getProject,
       tasksByStatus,
       overdueTasks,
       loading,
@@ -448,9 +571,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       state,
+      archivedTasks,
       addTask,
       updateTask,
       deleteTask,
+      archiveTask,
+      restoreTask,
+      permanentlyDeleteTask,
       moveTask,
       uploadTaskAttachments,
       deleteAttachment,
@@ -463,12 +590,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addCategory,
       updateCategory,
       deleteCategory,
+      addProject,
+      updateProject,
+      deleteProject,
       refreshNotifications,
       markNotificationRead,
       deleteNotification,
       resetData,
       getMember,
       getCategory,
+      getProject,
       tasksByStatus,
       overdueTasks,
       loading,

@@ -32,6 +32,13 @@ export interface Category {
   color: string
 }
 
+export interface Project {
+  id: string
+  name: string
+  description: string
+  owner: string
+}
+
 export interface Task {
   id: string
   title: string
@@ -44,7 +51,10 @@ export interface Task {
   assigneeId: string | null
   folderId?: string | null
   categoryId?: string | null
+  projectId?: string | null
   dueDate: string | null
+  archived?: boolean
+  estimatedTime?: number | null
   reminderDate?: string | null
   repeatType?: RepeatType
   repeatEvery?: number | null
@@ -74,6 +84,7 @@ export interface AppState {
   members: TeamMember[]
   folders: Folder[]
   categories: Category[]
+  projects: Project[]
   notifications: AppNotification[]
   tasks: Task[]
 }

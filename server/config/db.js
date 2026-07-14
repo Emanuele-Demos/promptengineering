@@ -35,6 +35,13 @@ const initialCategories = [
   { id: 'c4', name: 'Casa', color: '#14b8a6' },
 ];
 
+const initialProjects = [
+  { id: 'p1', name: 'Marketing', description: 'Campagne e contenuti promozionali', owner: 'Marco Rossi' },
+  { id: 'p2', name: 'CRM', description: 'Gestione clienti e pipeline commerciale', owner: 'Laura Bianchi' },
+  { id: 'p3', name: 'Gestionale', description: 'Processi interni e automazioni operative', owner: 'Anna Neri' },
+  { id: 'p4', name: 'Ecommerce', description: 'Catalogo prodotti, checkout e ordini', owner: 'Giuseppe Verdi' },
+];
+
 const initialTasks = [
   {
     id: 't1',
@@ -45,6 +52,7 @@ const initialTasks = [
     assigneeId: 'm1',
     folderId: 'f3',
     categoryId: 'c1',
+    projectId: 'p3',
     dueDate: '2026-07-15',
     reminderDate: null,
     notes: '',
@@ -62,6 +70,7 @@ const initialTasks = [
     assigneeId: 'm2',
     folderId: 'f2',
     categoryId: 'c1',
+    projectId: 'p2',
     dueDate: '2026-07-12',
     reminderDate: null,
     notes: '',
@@ -79,6 +88,7 @@ const initialTasks = [
     assigneeId: 'm3',
     folderId: 'f1',
     categoryId: 'c1',
+    projectId: 'p4',
     dueDate: '2026-07-20',
     reminderDate: null,
     notes: '',
@@ -96,6 +106,7 @@ const initialTasks = [
     assigneeId: 'm4',
     folderId: 'f1',
     categoryId: 'c2',
+    projectId: 'p3',
     dueDate: '2026-07-25',
     reminderDate: null,
     notes: '',
@@ -113,6 +124,7 @@ const initialTasks = [
     assigneeId: 'm2',
     folderId: 'f2',
     categoryId: 'c1',
+    projectId: 'p2',
     dueDate: '2026-07-01',
     reminderDate: null,
     notes: '',
@@ -130,6 +142,7 @@ const initialTasks = [
     assigneeId: 'm2',
     folderId: 'f2',
     categoryId: 'c3',
+    projectId: 'p4',
     dueDate: '2026-07-10',
     reminderDate: null,
     notes: '',
@@ -171,6 +184,16 @@ export function initDb() {
       )
     `);
 
+    // 2c. Tabella projects
+    db.run(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        owner TEXT
+      )
+    `);
+
     // 3. Tabella tasks (aggiornata con folderId e categoryId)
     db.run(`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -182,7 +205,10 @@ export function initDb() {
         assigneeId TEXT,
         folderId TEXT,
         categoryId TEXT,
+        projectId TEXT,
         dueDate TEXT,
+        archived INTEGER NOT NULL DEFAULT 0,
+        estimatedTime INTEGER,
         reminderDate TEXT,
         notes TEXT NOT NULL DEFAULT '',
         links TEXT NOT NULL DEFAULT '[]',
@@ -200,13 +226,17 @@ export function initDb() {
         updatedAt TEXT NOT NULL,
         FOREIGN KEY (assigneeId) REFERENCES members(id) ON DELETE SET NULL,
         FOREIGN KEY (folderId) REFERENCES folders(id) ON DELETE SET NULL,
-        FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL
+        FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL,
+        FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE SET NULL
       )
     `);
 
     // Migrazione: aggiunge categoryId se la tabella tasks esisteva già
     db.run('ALTER TABLE tasks ADD COLUMN folderId TEXT', () => {});
     db.run('ALTER TABLE tasks ADD COLUMN categoryId TEXT', () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN projectId TEXT', () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN archived INTEGER NOT NULL DEFAULT 0', () => {});
+    db.run('ALTER TABLE tasks ADD COLUMN estimatedTime INTEGER', () => {});
     db.run('ALTER TABLE tasks ADD COLUMN reminderDate TEXT', () => {});
     db.run("ALTER TABLE tasks ADD COLUMN notes TEXT NOT NULL DEFAULT ''", () => {});
     db.run("ALTER TABLE tasks ADD COLUMN links TEXT NOT NULL DEFAULT '[]'", () => {});
@@ -219,6 +249,9 @@ export function initDb() {
     db.run('ALTER TABLE tasks ADD COLUMN repeatNextDate TEXT', () => {});
     db.run('ALTER TABLE tasks ADD COLUMN repeatStopped INTEGER NOT NULL DEFAULT 0', () => {});
     db.run('ALTER TABLE tasks ADD COLUMN repeatParentId TEXT', () => {});
+    db.run("UPDATE tasks SET projectId = 'p3' WHERE id IN ('t1', 't4') AND projectId IS NULL", () => {});
+    db.run("UPDATE tasks SET projectId = 'p2' WHERE id IN ('t2', 't5') AND projectId IS NULL", () => {});
+    db.run("UPDATE tasks SET projectId = 'p4' WHERE id IN ('t3', 't6') AND projectId IS NULL", () => {});
 
     // 4. Tabella notifications
     db.run(`
@@ -277,11 +310,20 @@ export function initDb() {
       }
     });
 
+    db.get('SELECT COUNT(*) as count FROM projects', (err, row) => {
+      if (!err && row.count === 0) {
+        const stmt = db.prepare('INSERT INTO projects (id, name, description, owner) VALUES (?, ?, ?, ?)');
+        initialProjects.forEach((p) => stmt.run(p.id, p.name, p.description, p.owner));
+        stmt.finalize();
+        console.log('Seed projects completato.');
+      }
+    });
+
     db.get('SELECT COUNT(*) as count FROM tasks', (err, row) => {
       if (!err && row.count === 0) {
-        const stmt = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, reminderDate, notes, links, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        const stmt = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, categoryId, projectId, dueDate, reminderDate, notes, links, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
         initialTasks.forEach((t) => {
-          stmt.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.categoryId ?? null, t.dueDate, t.reminderDate ?? null, t.notes, t.links, t.tags, t.createdAt, t.updatedAt);
+          stmt.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.categoryId ?? null, t.projectId ?? null, t.dueDate, t.reminderDate ?? null, t.notes, t.links, t.tags, t.createdAt, t.updatedAt);
         });
         stmt.finalize();
         console.log('Seed tasks completato.');
@@ -297,6 +339,7 @@ export function resetDb(callback) {
     db.run('DELETE FROM tasks');
     db.run('DELETE FROM folders');
     db.run('DELETE FROM categories');
+    db.run('DELETE FROM projects');
     db.run('DELETE FROM members');
 
     const stmtM = db.prepare('INSERT INTO members (id, name, email, role, color) VALUES (?, ?, ?, ?, ?)');
@@ -311,9 +354,13 @@ export function resetDb(callback) {
     initialCategories.forEach((c) => stmtC.run(c.id, c.name, c.color));
     stmtC.finalize();
 
-    const stmtT = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, categoryId, dueDate, reminderDate, notes, links, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const stmtP = db.prepare('INSERT INTO projects (id, name, description, owner) VALUES (?, ?, ?, ?)');
+    initialProjects.forEach((p) => stmtP.run(p.id, p.name, p.description, p.owner));
+    stmtP.finalize();
+
+    const stmtT = db.prepare('INSERT INTO tasks (id, title, description, status, priority, assigneeId, folderId, categoryId, projectId, dueDate, reminderDate, notes, links, tags, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     initialTasks.forEach((t) => {
-      stmtT.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.categoryId ?? null, t.dueDate, t.reminderDate ?? null, t.notes, t.links, t.tags, t.createdAt, t.updatedAt);
+      stmtT.run(t.id, t.title, t.description, t.status, t.priority, t.assigneeId, t.folderId, t.categoryId ?? null, t.projectId ?? null, t.dueDate, t.reminderDate ?? null, t.notes, t.links, t.tags, t.createdAt, t.updatedAt);
     });
     stmtT.finalize();
 

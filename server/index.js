@@ -6,6 +6,7 @@ import { initDb, resetDb } from './config/db.js';
 import { getMembers, createMember, updateMember, deleteMember } from './controllers/membersController.js';
 import { getFolders, createFolder, updateFolder, deleteFolder } from './controllers/foldersController.js';
 import { getCategories, createCategory, updateCategory, deleteCategory } from './controllers/categoriesController.js';
+import { getProjects, createProject, updateProject, deleteProject } from './controllers/projectsController.js';
 import { getTasks, createTask, updateTask, deleteTask } from './controllers/tasksController.js';
 import { getNotifications, markNotificationRead, deleteNotification } from './controllers/notificationsController.js';
 import { getStatistics } from './controllers/statisticsController.js';
@@ -56,6 +57,16 @@ app.get('/categories', getCategories);
 app.post('/categories', createCategory);
 app.put('/categories/:id', updateCategory);
 app.delete('/categories/:id', deleteCategory);
+
+// Progetti
+app.get('/api/projects', getProjects);
+app.post('/api/projects', createProject);
+app.put('/api/projects/:id', updateProject);
+app.delete('/api/projects/:id', deleteProject);
+app.get('/projects', getProjects);
+app.post('/projects', createProject);
+app.put('/projects/:id', updateProject);
+app.delete('/projects/:id', deleteProject);
 
 // Task
 app.get('/api/tasks', getTasks);

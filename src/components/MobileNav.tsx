@@ -1,18 +1,22 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Kanban, Tags, Users, Zap } from 'lucide-react'
+import { Archive, FolderKanban, LayoutDashboard, Kanban, Tags, Users, Zap } from 'lucide-react'
 
 const links = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
   { to: '/board', label: 'Board', icon: Kanban },
   { to: '/team', label: 'Team', icon: Users },
+  { to: '/projects', label: 'Progetti', icon: FolderKanban },
   { to: '/categories', label: 'Categorie', icon: Tags },
+  { to: '/archive', label: 'Archivio', icon: Archive },
 ]
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
   '/board': 'Board Kanban',
   '/team': 'Team',
+  '/projects': 'Progetti',
   '/categories': 'Categorie',
+  '/archive': 'Archivio',
 }
 
 export function MobileHeader() {

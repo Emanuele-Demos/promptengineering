@@ -12,16 +12,27 @@ interface TaskCardProps {
   onDragStart?: (e: React.DragEvent) => void
 }
 
+function formatEstimatedTime(minutes?: number | null) {
+  if (!minutes) return null
+  if (minutes >= 2400 && minutes % 2400 === 0) return `${minutes / 2400} sett.`
+  if (minutes >= 480 && minutes % 480 === 0) return `${minutes / 480} g`
+  if (minutes >= 60 && minutes % 60 === 0) return `${minutes / 60} h`
+  if (minutes >= 60) return `${Math.round((minutes / 60) * 10) / 10} h`
+  return `${minutes} min`
+}
+
 export function TaskCard({
   task,
   onClick,
   draggable = false,
   onDragStart,
 }: TaskCardProps) {
-  const { getMember, getCategory } = useApp()
+  const { getMember, getCategory, getProject } = useApp()
   const assignee = getMember(task.assigneeId)
   const category = getCategory(task.categoryId)
+  const project = getProject(task.projectId)
   const overdue = isOverdue(task.dueDate, task.status)
+  const estimated = formatEstimatedTime(task.estimatedTime)
 
   return (
     <div
@@ -50,6 +61,14 @@ export function TaskCard({
                   style={{ backgroundColor: category.color }}
                 />
                 {category.name}
+              </span>
+            </div>
+          )}
+
+          {project && (
+            <div className="mb-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-blue-700 bg-blue-50">
+                {project.name}
               </span>
             </div>
           )}
@@ -85,6 +104,11 @@ export function TaskCard({
                   title={`Promemoria: ${new Date(task.reminderDate).toLocaleString('it-IT')}`}
                 >
                   <Bell className="w-3.5 h-3.5" />
+                </span>
+              )}
+              {estimated && (
+                <span className="text-[11px] font-medium text-slate-500">
+                  {estimated}
                 </span>
               )}
             </div>

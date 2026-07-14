@@ -1,4 +1,4 @@
-import { Calendar, GripVertical, Paperclip } from 'lucide-react'
+import { Calendar, Clock3, GripVertical, Paperclip } from 'lucide-react'
 import type { Task } from '../types'
 import { useApp } from '../store/AppContext'
 import { formatDate, isOverdue } from '../utils/helpers'
@@ -74,6 +74,12 @@ export function TaskCard({
                 >
                   <Calendar className="w-3 h-3" />
                   {formatDate(task.dueDate)}
+                </span>
+              )}
+              {task.estimatedTime && (
+                <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                  <Clock3 className="w-3 h-3" />
+                  {task.estimatedTime}
                 </span>
               )}
               {assignee && (

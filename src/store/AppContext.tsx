@@ -68,6 +68,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           notes: task.notes ?? '',
           links: task.links ?? [],
           attachments: task.attachments ?? [],
+          estimatedTime: task.estimatedTime ?? '',
         }))
 
         setState({ tasks: normalizedTasks, members: resMembers, folders: resFolders })
@@ -82,14 +83,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString()
+    const { notes = '', links = [], attachments = [], estimatedTime = '', ...rest } = task
     const newTask: Task = {
-      notes: '',
-      links: [],
-      attachments: [],
-      ...task,
       id: uuid(),
       createdAt: now,
       updatedAt: now,
+      notes,
+      links,
+      attachments,
+      estimatedTime,
+      ...rest,
     }
 
     setState((prev) => ({

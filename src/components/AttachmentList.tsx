@@ -1,5 +1,5 @@
 import type { Attachment } from '../types'
-import { FileText, Download, Image } from 'lucide-react'
+import { FileText, Download } from 'lucide-react'
 
 interface AttachmentListProps {
   attachments: Attachment[]

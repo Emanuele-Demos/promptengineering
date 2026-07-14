@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
-import type { Task, TaskPriority, TaskStatus } from '../types'
+import type { Attachment, Task, TaskPriority, TaskStatus } from '../types'
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
@@ -15,16 +15,31 @@ interface TaskModalProps {
   onClose: () => void
 }
 
-const emptyForm = {
+type TaskFormState = {
+  title: string
+  description: string
+  notes: string
+  links: string
+  attachments: Attachment[]
+  status: TaskStatus
+  priority: TaskPriority
+  assigneeId: string
+  dueDate: string
+  estimatedTime: string
+  tags: string
+}
+
+const emptyForm: TaskFormState = {
   title: '',
   description: '',
   notes: '',
   links: '',
   attachments: [],
-  status: 'todo' as TaskStatus,
-  priority: 'medium' as TaskPriority,
-  assigneeId: '' as string,
+  status: 'todo',
+  priority: 'medium',
+  assigneeId: '',
   dueDate: '',
+  estimatedTime: '',
   tags: '',
 }
 
@@ -37,7 +52,7 @@ export function TaskModal({
   const { members, addTask, updateTask, deleteTask } = useApp()
   const isEditing = !!task
 
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState<TaskFormState>(emptyForm)
 
   useEffect(() => {
     if (task) {
@@ -51,6 +66,7 @@ export function TaskModal({
         priority: task.priority,
         assigneeId: task.assigneeId ?? '',
         dueDate: task.dueDate ?? '',
+        estimatedTime: task.estimatedTime ?? '',
         tags: task.tags.join(', '),
       })
     } else {
@@ -77,6 +93,7 @@ export function TaskModal({
       priority: form.priority,
       assigneeId: form.assigneeId || null,
       dueDate: form.dueDate || null,
+      estimatedTime: form.estimatedTime.trim(),
       tags: form.tags
         .split(',')
         .map((t) => t.trim())
@@ -251,6 +268,19 @@ export function TaskModal({
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Tempo stimato
+            </label>
+            <input
+              type="text"
+              value={form.estimatedTime}
+              onChange={(e) => setForm({ ...form, estimatedTime: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Es. 4 ore, 1 giorno"
+            />
           </div>
 
           <div>

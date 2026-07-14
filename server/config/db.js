@@ -131,7 +131,7 @@ export function initDb() {
       )
     `);
 
-    // 3. Tabella tasks (aggiornata con folderId)
+    // 3. Tabella tasks (aggiornata con folderId e tempo stimato)
     db.run(`
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
@@ -142,6 +142,7 @@ export function initDb() {
         assigneeId TEXT,
         folderId TEXT,
         dueDate TEXT,
+        estimatedTime TEXT,
         tags TEXT NOT NULL DEFAULT '[]',
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL,
@@ -149,6 +150,12 @@ export function initDb() {
         FOREIGN KEY (folderId) REFERENCES folders(id) ON DELETE SET NULL
       )
     `);
+
+    db.run('ALTER TABLE tasks ADD COLUMN estimatedTime TEXT', (err) => {
+      if (err && !err.message.includes('duplicate column name')) {
+        console.error('Errore nell\'aggiunta della colonna estimatedTime:', err.message);
+      }
+    });
 
     // Eseguiamo il seed se le tabelle sono vuote
     db.get('SELECT COUNT(*) as count FROM members', (err, row) => {

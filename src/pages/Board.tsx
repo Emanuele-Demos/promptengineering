@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search } from 'lucide-react'
+import { Clock3, Plus, Search } from 'lucide-react'
 import type { Task, TaskStatus } from '../types'
 import { useApp } from '../store/AppContext'
 import { KanbanColumn } from '../components/KanbanColumn'
@@ -14,13 +14,18 @@ export function Board() {
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('todo')
   const [search, setSearch] = useState('')
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [showEstimatedOnly, setShowEstimatedOnly] = useState(false)
 
-  const filteredTasks = tasks.filter(
-    (t) =>
+  const filteredTasks = tasks.filter((t) => {
+    const matchesSearch =
       t.title.toLowerCase().includes(search.toLowerCase()) ||
       t.description.toLowerCase().includes(search.toLowerCase()) ||
-      t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())),
-  )
+      t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
+
+    const matchesEstimated = !showEstimatedOnly || Boolean(t.estimatedTime?.trim())
+
+    return matchesSearch && matchesEstimated
+  })
 
   const openCreate = (status: TaskStatus) => {
     setSelectedTask(null)
@@ -60,13 +65,27 @@ export function Board() {
               className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
-          <button
-            onClick={() => openCreate('todo')}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="sm:inline">Nuovo task</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowEstimatedOnly((prev) => !prev)}
+              className={`flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                showEstimatedOnly
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Clock3 className="w-4 h-4" />
+              <span>Tempo stimato</span>
+            </button>
+            <button
+              onClick={() => openCreate('todo')}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="sm:inline">Nuovo task</span>
+            </button>
+          </div>
         </div>
       </header>
 

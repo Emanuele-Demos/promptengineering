@@ -41,6 +41,7 @@ export interface Task {
   assigneeId: string | null
   folderId?: string | null
   dueDate: string | null
+  estimatedTime: string
   tags: string[]
   createdAt: string
   updatedAt: string

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { Task } from '../types'
 import {
   CheckCircle2,
   Clock,
@@ -62,7 +63,7 @@ export function Dashboard() {
     let tempoMedioStr = "1.5 giorni" // Fallback predefinito se non ci sono dati storici
     if (taskFatti.length > 0) {
       const totaleOre = taskFatti.reduce((acc, t) => {
-        const diffMs = new Date(t.updatedAt) - new Date(t.createdAt)
+        const diffMs = new Date(t.updatedAt).getTime() - new Date(t.createdAt).getTime()
         return acc + Math.max(0, diffMs / (1000 * 60 * 60))
       }, 0)
       const mediaOre = totaleOre / taskFatti.length
@@ -103,16 +104,16 @@ export function Dashboard() {
     })
 
     // Grafico 3: Task per Categoria (Estrae i tag o le categorie dai tuoi task)
-    const mappaCategorie = {}
+    const mappaCategorie: Record<string, number> = {}
     tasks.forEach(t => {
-      const cat = t.category || (t.tags && t.tags[0]) || 'Generale'
+      const cat = (t as Task & { category?: string }).category || (t.tags && t.tags[0]) || 'Generale'
       const catFormattata = cat.charAt(0).toUpperCase() + cat.slice(1)
       mappaCategorie[catFormattata] = (mappaCategorie[catFormattata] || 0) + 1
     })
     const taskPerCategoria = Object.keys(mappaCategorie).map(name => ({ name, value: mappaCategorie[name] }))
 
     // Grafico 4: Task per Priorità
-    const mappaPriorita = {}
+    const mappaPriorita: Record<string, number> = {}
     tasks.forEach(t => {
       const prio = t.priority || 'Media'
       const prioFormattata = prio.charAt(0).toUpperCase() + prio.slice(1)
@@ -321,7 +322,7 @@ export function Dashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={metricheElementi.taskPerCategoria} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={3} dataKey="value">
-                    {metricheElementi.taskPerCategoria.map((entry, index) => (
+                    {metricheElementi.taskPerCategoria.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORI_CATEGORIE[index % COLORI_CATEGORIE.length]} />
                     ))}
                   </Pie>
@@ -340,7 +341,7 @@ export function Dashboard() {
                 <PieChart>
                   <Pie data={metricheElementi.taskPerPriorita} cx="50%" cy="50%" outerRadius={80} label fontSize={11} dataKey="value">
                     {metricheElementi.taskPerPriorita.map((entry, index) => {
-                      const colorePrio = MAPPATURA_COLORI_PRIORITA[entry.name] || '#64748b'
+                      const colorePrio = MAPPATURA_COLORI_PRIORITA[entry.name as keyof typeof MAPPATURA_COLORI_PRIORITA] || '#64748b'
                       return <Cell key={`cell-${index}`} fill={colorePrio} />
                     })}
                   </Pie>

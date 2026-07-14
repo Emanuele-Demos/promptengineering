@@ -118,4 +118,47 @@ export async function runMigrations(db: Database): Promise<void> {
       )
     `)
   }
+
+  const goalsTable = (await db.all(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name='goals'`
+  )) as { name: string }[]
+
+  if (goalsTable.length === 0) {
+    await db.exec(`
+      CREATE TABLE goals (
+        id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('daily', 'weekly')),
+        target INTEGER NOT NULL,
+        periodStart TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        FOREIGN KEY (userId) REFERENCES members(id) ON DELETE CASCADE,
+        UNIQUE(userId, type)
+      )
+    `)
+  }
+
+  const goalHistoryTable = (await db.all(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name='goal_history'`
+  )) as { name: string }[]
+
+  if (goalHistoryTable.length === 0) {
+    await db.exec(`
+      CREATE TABLE goal_history (
+        id TEXT PRIMARY KEY,
+        goalId TEXT NOT NULL,
+        userId TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('daily', 'weekly')),
+        target INTEGER NOT NULL,
+        completedTasks INTEGER NOT NULL,
+        completionPercentage INTEGER NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('reached', 'not_reached')),
+        periodStart TEXT NOT NULL,
+        periodEnd TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY (userId) REFERENCES members(id) ON DELETE CASCADE
+      )
+    `)
+  }
 }

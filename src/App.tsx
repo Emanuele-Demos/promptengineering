@@ -7,6 +7,7 @@ import { Team } from "./pages/Team";
 import { GestioneStato } from "./pages/GestioneStato";
 import { GestioneCategorie } from "./pages/GestioneCategorie";
 import { CentroNotifiche } from "./pages/CentroNotifiche";
+import { GestioneObiettivi } from "./pages/GestioneObiettivi";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="gestione_stato" element={<GestioneStato />} />
             <Route path="gestione_categorie" element={<GestioneCategorie />} />
             <Route path="notifiche" element={<CentroNotifiche />} />
+            <Route path="obiettivi" element={<GestioneObiettivi />} />
           </Route>
         </Routes>
       </AppProvider>

@@ -16,6 +16,7 @@ import type {
   TeamMember,
 } from '../types'
 import { MEMBER_COLORS } from '../types'
+import { syncTaskStatus } from '../api/tasks.js'
 
 const STORAGE_KEY = 'teamflow-data'
 
@@ -113,6 +114,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const moveTask = useCallback(
     (id: string, status: TaskStatus) => {
       updateTask(id, { status })
+      syncTaskStatus(id, status).catch(() => {})
     },
     [updateTask],
   )

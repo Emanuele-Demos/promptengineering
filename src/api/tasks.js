@@ -43,6 +43,26 @@ export function getAttachmentOpenUrl(id) {
   return `${API_BASE_URL}/attachments/${id}/open`
 }
 
+export async function syncTaskStatus(taskId, status) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/tasks/${taskId}`)
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  if (response.ok) {
+    const existing = await response.json()
+    return apiFetch(`${API_BASE_URL}/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...existing, status }),
+    })
+  }
+
+  return null
+}
+
 export async function upsertTask(task) {
   let response
   try {

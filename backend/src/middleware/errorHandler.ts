@@ -53,6 +53,15 @@ export function errorHandler(
     return
   }
 
+  if (
+    err.message.includes('Il target deve essere') ||
+    err.message.includes('Tipo obiettivo non valido') ||
+    err.message.includes('Obiettivo non trovato')
+  ) {
+    res.status(400).json({ message: err.message })
+    return
+  }
+
   if (err.message.includes('FOREIGN KEY constraint failed')) {
     res.status(400).json({ message: 'Riferimento non valido' })
     return

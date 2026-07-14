@@ -6,6 +6,7 @@ import statoRoutes from './statoRoutes'
 import noteRoutes from './noteRoutes'
 import categoryRoutes from './categoryRoutes'
 import notificationRoutes from './notificationRoutes'
+import goalRoutes from './goalRoutes'
 
 const router = Router()
 
@@ -20,5 +21,6 @@ router.use('/', statoRoutes)
 router.use('/', noteRoutes)
 router.use('/', categoryRoutes)
 router.use('/', notificationRoutes)
+router.use('/', goalRoutes)
 
 export default router

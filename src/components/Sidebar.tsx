@@ -6,6 +6,7 @@ import {
   Zap,
   ListChecks,
   FolderOpen,
+  Target,
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import { NotificationBell } from './NotificationBell'
@@ -16,6 +17,7 @@ const links = [
   { to: '/team', label: 'Team', icon: Users },
   { to: '/gestione_stato', label: 'Gestione Stato', icon: ListChecks },
   { to: '/gestione_categorie', label: 'Categorie', icon: FolderOpen },
+  { to: '/obiettivi', label: 'Obiettivi', icon: Target },
 ]
 
 export function Sidebar() {

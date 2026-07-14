@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../store/AppContext'
+import { useGoals } from '../hooks/useGoals'
+import { GoalProgressCard } from '../components/GoalProgressCard'
 import { STATUS_LABELS } from '../types'
 import { MemberAvatar } from '../components/MemberAvatar'
 import { PriorityBadge } from '../components/PriorityBadge'
@@ -34,6 +36,7 @@ const MAPPATURA_COLORI_PRIORITA: Record<string, string> = {
 
 export function Dashboard() {
   const { tasks, members, stats, overdueTasks, getMember } = useApp()
+  const { daily, weekly, loading: goalsLoading } = useGoals()
 
   // --- LOGICA DI CALCOLO DINAMICA DEI 6 INDICATORI RICHIESTI ---
   const metricheElementi = useMemo(() => {
@@ -176,6 +179,31 @@ export function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* OBIETTIVI GIORNALIERI E SETTIMANALI */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-slate-900">I tuoi obiettivi</h2>
+          <Link to="/obiettivi" className="text-sm text-indigo-600 hover:text-indigo-700">
+            Gestisci obiettivi
+          </Link>
+        </div>
+        {goalsLoading ? (
+          <p className="text-sm text-slate-500">Caricamento obiettivi...</p>
+        ) : daily || weekly ? (
+          <div className="grid sm:grid-cols-2 gap-4">
+            {daily && <GoalProgressCard goal={daily} />}
+            {weekly && <GoalProgressCard goal={weekly} />}
+          </div>
+        ) : (
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-sm text-slate-600">
+            Nessun obiettivo impostato.{' '}
+            <Link to="/obiettivi" className="text-indigo-600 hover:underline">
+              Crea il tuo primo obiettivo
+            </Link>
+          </div>
+        )}
+      </section>
 
       {/* STRUTTURA ESISTENTE (Task recenti, Avanzamento, Carico di lavoro) */}
       <div className="grid lg:grid-cols-3 gap-6">

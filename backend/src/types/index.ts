@@ -17,6 +17,41 @@ export interface TaskNote {
   updatedAt: string
 }
 
+export type GoalType = 'daily' | 'weekly'
+export type GoalProgressStatus = 'in_progress' | 'reached'
+export type GoalHistoryStatus = 'reached' | 'not_reached'
+
+export interface Goal {
+  id: string
+  userId: string
+  type: GoalType
+  target: number
+  periodStart: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GoalWithProgress extends Goal {
+  periodEnd: string
+  completedTasks: number
+  completionPercentage: number
+  status: GoalProgressStatus
+}
+
+export interface GoalHistory {
+  id: string
+  goalId: string
+  userId: string
+  type: GoalType
+  target: number
+  completedTasks: number
+  completionPercentage: number
+  status: GoalHistoryStatus
+  periodStart: string
+  periodEnd: string
+  createdAt: string
+}
+
 export type ReminderType = 'none' | '5m' | '30m' | '1h' | '1d' | 'custom'
 
 export interface Notification {

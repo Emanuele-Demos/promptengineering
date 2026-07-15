@@ -2,12 +2,12 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
 import { v4 as uuid } from 'uuid'
-import { seedData } from '../data/seed'
 import type {
   AppState,
   Task,
@@ -17,25 +17,21 @@ import type {
 } from '../types'
 import { MEMBER_COLORS } from '../types'
 import { formatEstimatedTimeLong } from '../utils/estimatedTime'
-import { syncTaskStatus, syncTaskFavorite, archiveTaskApi, restoreTaskApi, deleteTaskPermanent } from '../api/tasks.js'
-
-const STORAGE_KEY = 'teamflow-data'
-
-function loadState(): AppState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as AppState
-  } catch {
-    /* ignore corrupt data */
-  }
-  return seedData
-}
-
-function persist(state: AppState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-}
+import {
+  archiveTaskApi,
+  deleteTaskPermanent,
+  getArchivedTasks,
+  getTasks,
+  restoreTaskApi,
+  syncTaskFavorite,
+  syncTaskStatus,
+} from '../api/tasks.js'
+import { getMembers } from '../api/members.js'
 
 interface AppContextValue extends AppState {
+  loading: boolean
+  error: string
+  refreshData: () => Promise<void>
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => string
   updateTask: (id: string, updates: Partial<Task>) => void
   deleteTask: (id: string) => void
@@ -47,7 +43,6 @@ interface AppContextValue extends AppState {
   addMember: (member: Omit<TeamMember, 'id' | 'color'>) => void
   updateMember: (id: string, updates: Partial<TeamMember>) => void
   deleteMember: (id: string) => void
-  resetData: () => void
   getMember: (id: string | null) => TeamMember | undefined
   tasksByStatus: (status: TaskStatus) => Task[]
   overdueTasks: Task[]
@@ -70,14 +65,36 @@ interface AppContextValue extends AppState {
 const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>(loadState)
+  const [state, setState] = useState<AppState>({ tasks: [], members: [] })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const refreshData = useCallback(async () => {
+    setError('')
+    try {
+      const [activeTasks, archivedTasks, members] = await Promise.all([
+        getTasks() as Promise<Task[]>,
+        getArchivedTasks() as Promise<Task[]>,
+        getMembers() as Promise<TeamMember[]>,
+      ])
+      setState({
+        tasks: [...activeTasks, ...archivedTasks],
+        members,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore imprevisto')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    setLoading(true)
+    refreshData()
+  }, [refreshData])
 
   const commit = useCallback((updater: (prev: AppState) => AppState) => {
-    setState((prev) => {
-      const next = updater(prev)
-      persist(next)
-      return next
-    })
+    setState(updater)
   }, [])
 
   const addTask = useCallback(
@@ -252,11 +269,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [commit],
   )
 
-  const resetData = useCallback(() => {
-    persist(seedData)
-    setState(seedData)
-  }, [])
-
   const activeTasks = useMemo(
     () => state.tasks.filter((t) => !t.archived),
     [state.tasks],
@@ -332,6 +344,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       ...state,
+      loading,
+      error,
+      refreshData,
       addTask,
       updateTask,
       deleteTask,
@@ -343,7 +358,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addMember,
       updateMember,
       deleteMember,
-      resetData,
       getMember,
       tasksByStatus,
       overdueTasks,
@@ -352,6 +366,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       state,
+      loading,
+      error,
+      refreshData,
       addTask,
       updateTask,
       deleteTask,
@@ -363,7 +380,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addMember,
       updateMember,
       deleteMember,
-      resetData,
       getMember,
       tasksByStatus,
       overdueTasks,
@@ -371,6 +387,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       stats,
     ],
   )
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen min-h-[100dvh] items-center justify-center bg-slate-50">
+        <p className="text-sm text-slate-500">Caricamento dati...</p>
+      </div>
+    )
+  }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }

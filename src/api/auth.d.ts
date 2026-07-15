@@ -1,6 +1,8 @@
 export interface AuthUser {
   id: string
   name: string
+  firstName: string
+  lastName: string
   email: string
   role: string
   color: string
@@ -18,6 +20,7 @@ export interface RegisterResponse {
   user?: AuthUser
   token?: string
   expiresIn?: string
+  onboardingTask?: { id: string; title: string }
 }
 
 export interface MeResponse {
@@ -26,9 +29,8 @@ export interface MeResponse {
 
 export declare function register(params: {
   firstName: string
-  lastName: string
+  role: string
   username?: string
-  email: string
   password: string
 }): Promise<RegisterResponse>
 

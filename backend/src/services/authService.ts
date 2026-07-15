@@ -14,6 +14,9 @@ import { getDatabase } from '../config/database'
 import type { TeamMember } from '../types'
 
 import type { RegisterInput } from '../validators/registerValidator'
+import { generateRandomLastName } from '../utils/randomLastName'
+import { buildInstitutionalEmail } from '../utils/institutionalEmail'
+import { createOnboardingTaskForMember } from './onboardingService'
 
 export interface AuthMember extends TeamMember {
   password: string
@@ -26,9 +29,32 @@ export interface AuthMember extends TeamMember {
 export interface AuthUser {
   id: string
   name: string
+  firstName: string
+  lastName: string
   email: string
   role: string
   color: string
+}
+
+function toAuthUser(member: {
+  id: string
+  name: string
+  email: string
+  role: string
+  color: string
+  firstName?: string | null
+  lastName?: string | null
+}): AuthUser {
+  const parts = member.name.trim().split(/\s+/)
+  return {
+    id: member.id,
+    name: member.name,
+    firstName: member.firstName?.trim() || parts[0] || member.name,
+    lastName: member.lastName?.trim() || parts.slice(1).join(' ') || '',
+    email: member.email,
+    role: member.role,
+    color: member.color,
+  }
 }
 
 export interface LoginResult {
@@ -43,6 +69,7 @@ export interface RegisterResult {
   user?: AuthUser
   token?: string
   expiresIn?: string
+  onboardingTask?: { id: string; title: string }
 }
 
 function generateMemberId(): string {
@@ -87,7 +114,8 @@ export async function getMemberByEmail(
 ): Promise<AuthMember | undefined> {
   const connection = db ?? (await getDatabase())
   return connection.get<AuthMember>(
-    `SELECT id, name, email, role, color, password, isActive FROM members WHERE LOWER(email) = LOWER(?)`,
+    `SELECT id, name, firstName, lastName, email, role, color, password, isActive
+     FROM members WHERE LOWER(email) = LOWER(?)`,
     [email.trim()]
   )
 }
@@ -105,10 +133,19 @@ export async function getMemberByUsername(
 
 export async function getAuthUserById(id: string, db?: Database): Promise<AuthUser | undefined> {
   const connection = db ?? (await getDatabase())
-  return connection.get<AuthUser>(
-    `SELECT id, name, email, role, color FROM members WHERE id = ?`,
+  const row = await connection.get<{
+    id: string
+    name: string
+    firstName: string | null
+    lastName: string | null
+    email: string
+    role: string
+    color: string
+  }>(
+    `SELECT id, name, firstName, lastName, email, role, color FROM members WHERE id = ?`,
     [id]
   )
+  return row ? toAuthUser(row) : undefined
 }
 
 export async function login(
@@ -145,19 +182,28 @@ export async function login(
   }
 
   const { token, expiresIn } = signToken(member.id, rememberMe)
-  const { password: _password, ...user } = member
-  return { user, token, expiresIn }
+  return { user: toAuthUser(member), token, expiresIn }
 }
 
 export async function register(input: RegisterInput): Promise<RegisterResult> {
   const db = await getDatabase()
 
-  const existingEmail = await getMemberByEmail(input.email, db)
-  if (existingEmail) {
+  const countRow = await db.get<{ count: number }>('SELECT COUNT(*) AS count FROM members')
+  const id = generateMemberId()
+  const lastName = generateRandomLastName()
+  const email = buildInstitutionalEmail(input.firstName, lastName)
+  const name = `${input.firstName} ${lastName}`
+
+  const existingGeneratedEmail = await getMemberByEmail(email, db)
+  if (existingGeneratedEmail) {
     const error = new Error('Email già registrata') as Error & { statusCode?: number }
     error.statusCode = 409
     throw error
   }
+
+  const color = pickMemberColor(countRow?.count ?? 0)
+  const hashedPassword = await hashPassword(input.password)
+  const now = new Date().toISOString()
 
   if (input.username) {
     const existingUsername = await getMemberByUsername(input.username, db)
@@ -168,13 +214,6 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
     }
   }
 
-  const countRow = await db.get<{ count: number }>('SELECT COUNT(*) AS count FROM members')
-  const id = generateMemberId()
-  const name = `${input.firstName} ${input.lastName}`
-  const color = pickMemberColor(countRow?.count ?? 0)
-  const hashedPassword = await hashPassword(input.password)
-  const now = new Date().toISOString()
-
   await db.run(
     `INSERT INTO members (
       id, name, firstName, lastName, username, email, role, color,
@@ -184,10 +223,10 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
       id,
       name,
       input.firstName,
-      input.lastName,
+      lastName,
       input.username ?? null,
-      input.email,
-      'User',
+      email,
+      input.role,
       color,
       hashedPassword,
       1,
@@ -196,17 +235,22 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
     ]
   )
 
+  const onboardingTask = await createOnboardingTaskForMember(id, input.role, db)
+
   const user: AuthUser = {
     id,
     name,
-    email: input.email,
-    role: 'User',
+    firstName: input.firstName,
+    lastName,
+    email,
+    role: input.role,
     color,
   }
 
   const result: RegisterResult = {
     success: true,
-    message: 'Registrazione completata con successo.',
+    message: `Registrazione completata con email ${email}. Ti è stata assegnata la task: "${onboardingTask.title}".`,
+    onboardingTask,
   }
 
   if (AUTO_LOGIN_AFTER_REGISTER) {

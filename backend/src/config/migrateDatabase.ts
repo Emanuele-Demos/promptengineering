@@ -1,5 +1,13 @@
 import type { Database } from 'sqlite'
 import { hashDefaultPassword } from '../services/authService'
+import {
+  generateRandomLastName,
+  isPlaceholderLastName,
+} from '../utils/randomLastName'
+import { buildInstitutionalEmail } from '../utils/institutionalEmail'
+import { createOnboardingTaskForMember } from '../services/onboardingService'
+import type { CompanyRole } from '../data/companyRoles'
+import { isCompanyRole } from '../data/companyRoles'
 
 async function columnExists(db: Database, table: string, column: string): Promise<boolean> {
   const rows = (await db.all(`PRAGMA table_info(${table})`)) as { name: string }[]
@@ -308,4 +316,112 @@ export async function runMigrations(db: Database): Promise<void> {
   }
 
   await db.run(`UPDATE members SET isActive = 1 WHERE isActive IS NULL`)
+
+  await db.run(`
+    DELETE FROM members
+    WHERE LOWER(email) = 'test.utente@team.it'
+       OR LOWER(firstName) = 'test'
+       OR LOWER(name) LIKE 'test %'
+  `)
+
+  const seedNames: Record<string, { firstName: string; lastName: string }> = {
+    m1: { firstName: 'Marco', lastName: 'Rossi' },
+    m2: { firstName: 'Laura', lastName: 'Bianchi' },
+    m3: { firstName: 'Giuseppe', lastName: 'Verdi' },
+    m4: { firstName: 'Anna', lastName: 'Neri' },
+  }
+
+  for (const [id, names] of Object.entries(seedNames)) {
+    await db.run(
+      `UPDATE members SET firstName = ?, lastName = ?, name = ?, updatedAt = datetime('now') WHERE id = ?`,
+      [names.firstName, names.lastName, `${names.firstName} ${names.lastName}`, id]
+    )
+  }
+
+  const membersWithPlaceholder = (await db.all(
+    `SELECT id, firstName, lastName, name FROM members
+     WHERE id NOT IN ('m1','m2','m3','m4')
+       AND (
+         lastName IS NULL
+         OR LOWER(TRIM(lastName)) = 'team'
+         OR LOWER(TRIM(lastName)) = 'utente'
+         OR name LIKE '% Team'
+       )`
+  )) as { id: string; firstName: string | null; lastName: string | null; name: string }[]
+
+  for (const member of membersWithPlaceholder) {
+    const firstName =
+      member.firstName?.trim() || member.name.trim().split(/\s+/)[0] || 'Utente'
+
+    if (!isPlaceholderLastName(member.lastName) && !member.name.trim().endsWith(' Team')) {
+      continue
+    }
+
+    const lastName = generateRandomLastName()
+    await db.run(
+      `UPDATE members SET firstName = ?, lastName = ?, name = ?, updatedAt = datetime('now') WHERE id = ?`,
+      [firstName, lastName, `${firstName} ${lastName}`, member.id]
+    )
+  }
+
+  const registeredUsers = (await db.all(
+    `SELECT id FROM members WHERE id LIKE 'u%'`
+  )) as { id: string }[]
+
+  if (registeredUsers.length > 0) {
+    const hashed = await hashDefaultPassword()
+    for (const user of registeredUsers) {
+      await db.run(
+        `UPDATE members SET password = ?, updatedAt = datetime('now') WHERE id = ?`,
+        [hashed, user.id]
+      )
+    }
+  }
+
+  const membersForEmail = (await db.all(
+    `SELECT id, firstName, lastName, email FROM members
+     WHERE firstName IS NOT NULL AND TRIM(firstName) != ''
+       AND lastName IS NOT NULL AND TRIM(lastName) != ''`
+  )) as { id: string; firstName: string; lastName: string; email: string }[]
+
+  for (const member of membersForEmail) {
+    const email = buildInstitutionalEmail(member.firstName, member.lastName)
+    if (member.email.toLowerCase() !== email) {
+      await db.run(
+        `UPDATE members SET email = ?, updatedAt = datetime('now') WHERE id = ?`,
+        [email, member.id]
+      )
+    }
+  }
+
+  const roleByFirstName: Record<string, CompanyRole> = {
+    lorenzo: 'Developer',
+    mario: 'QA Engineer',
+  }
+
+  const membersNeedingRole = (await db.all(
+    `SELECT id, firstName, lastName, role FROM members
+     WHERE LOWER(firstName) IN ('mario', 'lorenzo')
+       AND (role IS NULL OR TRIM(role) = '' OR role = 'User')`
+  )) as { id: string; firstName: string; lastName: string; role: string }[]
+
+  for (const member of membersNeedingRole) {
+    const role = roleByFirstName[member.firstName.trim().toLowerCase()]
+    if (!role || !isCompanyRole(role)) continue
+
+    await db.run(
+      `UPDATE members SET role = ?, updatedAt = datetime('now') WHERE id = ?`,
+      [role, member.id]
+    )
+
+    const taskRow = await db.get<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM tasks
+       WHERE assigneeId = ? AND archived = 0 AND status != 'done'`,
+      [member.id]
+    )
+
+    if ((taskRow?.count ?? 0) === 0) {
+      await createOnboardingTaskForMember(member.id, role, db)
+    }
+  }
 }

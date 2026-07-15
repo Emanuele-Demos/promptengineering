@@ -23,11 +23,10 @@ interface AuthContextValue {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
   register: (input: {
     firstName: string
-    lastName: string
+    role: string
     username?: string
-    email: string
     password: string
-  }) => Promise<{ message: string; autoLoggedIn: boolean }>
+  }) => Promise<{ message: string; autoLoggedIn: boolean; onboardingTask?: { id: string; title: string } }>
   logout: () => void
 }
 
@@ -84,9 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(
     async (input: {
       firstName: string
-      lastName: string
+      role: string
       username?: string
-      email: string
       password: string
     }) => {
       const result = await registerApi(input)
@@ -94,10 +92,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result.token && result.user) {
         saveAuth({ token: result.token, user: result.user, rememberMe: false })
         setUser(result.user)
-        return { message: result.message, autoLoggedIn: true }
+        return {
+          message: result.message,
+          autoLoggedIn: true,
+          onboardingTask: result.onboardingTask,
+        }
       }
 
-      return { message: result.message, autoLoggedIn: false }
+      return {
+        message: result.message,
+        autoLoggedIn: false,
+        onboardingTask: result.onboardingTask,
+      }
     },
     [],
   )

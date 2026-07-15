@@ -2,13 +2,7 @@ import type { AppState } from '../types'
 
 export const seedData: AppState = {
   members: [
-    {
-      id: 'm1',
-      name: 'Marco Rossi',
-      email: 'marco.rossi@team.it',
-      role: 'Project Manager',
-      color: '#6366f1',
-    },
+
     {
       id: 'm2',
       name: 'Laura Bianchi',

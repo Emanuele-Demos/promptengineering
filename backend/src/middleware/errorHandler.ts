@@ -66,9 +66,9 @@ export function errorHandler(
     err.message.includes('Username già in uso') ||
     err.message.includes('Username non valido') ||
     err.message.includes('Nome obbligatorio') ||
-    err.message.includes('Cognome obbligatorio') ||
     err.message.includes('Nome non valido') ||
-    err.message.includes('Cognome non valido') ||
+    err.message.includes('Ruolo obbligatorio') ||
+    err.message.includes('Ruolo aziendale non valido') ||
     err.message.includes('Password obbligatoria') ||
     err.message.includes('Password non valida') ||
     err.message.includes('La password deve contenere') ||

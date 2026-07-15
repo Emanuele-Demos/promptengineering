@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -10,12 +11,12 @@ import {
   FolderKanban,
   Archive,
   CalendarDays,
-  LogOut,
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import { useProjects } from '../hooks/useProjects'
 import { useAuth } from '../context/AuthContext'
 import { NotificationBell } from './NotificationBell'
+import { UserProfileModal } from './UserProfileModal'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -34,8 +35,10 @@ export function Sidebar() {
   const { projects, loading: projectsLoading } = useProjects()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [profileOpen, setProfileOpen] = useState(false)
 
   const handleLogout = () => {
+    setProfileOpen(false)
     logout()
     navigate('/login', { replace: true })
   }
@@ -112,27 +115,31 @@ export function Sidebar() {
 
       <div className="p-4 border-t border-slate-200 space-y-3">
         {user && (
-          <div className="flex items-center gap-3 px-1">
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0"
-              style={{ backgroundColor: user.color }}
-            >
-              {user.name.charAt(0)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
-              <p className="text-xs text-slate-500 truncate">{user.email}</p>
-            </div>
+          <>
             <button
               type="button"
-              onClick={handleLogout}
-              className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-              aria-label="Esci"
-              title="Esci"
+              onClick={() => setProfileOpen(true)}
+              className="flex w-full items-center gap-3 px-1 py-1 rounded-lg hover:bg-slate-50 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              aria-label="Apri profilo utente"
             >
-              <LogOut className="w-4 h-4" />
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0"
+                style={{ backgroundColor: user.color }}
+              >
+                {user.name.charAt(0)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
+                <p className="text-xs text-slate-500 truncate">{user.email}</p>
+              </div>
             </button>
-          </div>
+            <UserProfileModal
+              user={user}
+              open={profileOpen}
+              onClose={() => setProfileOpen(false)}
+              onLogout={handleLogout}
+            />
+          </>
         )}
         <div className="bg-slate-50 rounded-xl p-3 space-y-2">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">

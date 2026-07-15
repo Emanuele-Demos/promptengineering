@@ -20,13 +20,13 @@ async function handleResponse(response) {
   return data
 }
 
-export async function register({ firstName, lastName, username, email, password }) {
+export async function register({ firstName, role, username, password }) {
   let response
   try {
     response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ firstName, lastName, username, email, password }),
+      body: JSON.stringify({ firstName, role, username, password }),
     })
   } catch {
     throw new Error(NETWORK_ERROR)

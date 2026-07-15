@@ -1,15 +1,19 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2, Zap } from 'lucide-react'
+import { Briefcase, Loader2, Shield, Zap } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { PasswordInput } from '../components/auth/PasswordInput'
 import { PasswordStrength } from '../components/auth/PasswordStrength'
 import { TermsCheckbox } from '../components/auth/TermsCheckbox'
 import { isPasswordValid, PASSWORD_POLICY_MESSAGE } from '../utils/passwordPolicy'
-import { isInstitutionalEmail, INSTITUTIONAL_EMAIL_MESSAGE } from '../utils/institutionalEmail'
+import {
+  COMPANY_ROLES,
+  ONBOARDING_TASK_PREVIEW,
+  type CompanyRole,
+} from '../data/companyRoles'
 
 const registerSchema = z
   .object({
@@ -18,21 +22,17 @@ const registerSchema = z
       .min(1, 'Nome obbligatorio')
       .min(2, 'Nome troppo corto')
       .regex(/^[\p{L}\s'-]+$/u, 'Nome non valido'),
-    lastName: z
+    role: z
       .string()
-      .min(1, 'Cognome obbligatorio')
-      .min(2, 'Cognome troppo corto')
-      .regex(/^[\p{L}\s'-]+$/u, 'Cognome non valido'),
+      .min(1, 'Seleziona un ruolo aziendale')
+      .refine((v): v is CompanyRole => (COMPANY_ROLES as readonly string[]).includes(v), {
+        message: 'Ruolo aziendale non valido',
+      }),
     username: z
       .string()
       .regex(/^[a-zA-Z0-9_]{3,30}$/, 'Username non valido (3-30 caratteri, lettere, numeri e _)')
       .optional()
       .or(z.literal('')),
-    email: z
-      .string()
-      .min(1, 'Email obbligatoria')
-      .email('Email non valida')
-      .refine(isInstitutionalEmail, INSTITUTIONAL_EMAIL_MESSAGE),
     password: z
       .string()
       .min(1, 'Password obbligatoria')
@@ -47,7 +47,14 @@ const registerSchema = z
     path: ['confirmPassword'],
   })
 
-type RegisterFormValues = z.infer<typeof registerSchema>
+type RegisterFormValues = {
+  firstName: string
+  role: CompanyRole | ''
+  username?: string
+  password: string
+  confirmPassword: string
+  acceptTerms: boolean
+}
 
 const inputClass = (hasError: boolean) =>
   `w-full rounded-xl border bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 ${
@@ -66,12 +73,11 @@ export function RegisterPage() {
     watch,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(registerSchema) as Resolver<RegisterFormValues>,
     defaultValues: {
       firstName: '',
-      lastName: '',
+      role: '',
       username: '',
-      email: '',
       password: '',
       confirmPassword: '',
       acceptTerms: false,
@@ -79,6 +85,7 @@ export function RegisterPage() {
   })
 
   const passwordValue = watch('password') ?? ''
+  const selectedRole = watch('role') as CompanyRole | undefined
 
   const onSubmit = async (values: RegisterFormValues) => {
     setServerError(null)
@@ -87,9 +94,8 @@ export function RegisterPage() {
     try {
       const result = await registerUser({
         firstName: values.firstName,
-        lastName: values.lastName,
+        role: values.role as CompanyRole,
         username: values.username || undefined,
-        email: values.email,
         password: values.password,
       })
 
@@ -138,43 +144,64 @@ export function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Nome
-                </label>
-                <input
-                  id="firstName"
-                  autoComplete="given-name"
-                  aria-invalid={Boolean(errors.firstName)}
-                  className={inputClass(Boolean(errors.firstName))}
-                  placeholder="Mario"
-                  {...register('firstName')}
+            <div>
+              <label htmlFor="firstName" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Nome
+              </label>
+              <input
+                id="firstName"
+                autoComplete="given-name"
+                aria-invalid={Boolean(errors.firstName)}
+                className={inputClass(Boolean(errors.firstName))}
+                placeholder="Mario"
+                {...register('firstName')}
+              />
+              {errors.firstName && (
+                <p className="mt-1.5 text-sm text-red-600" role="alert">
+                  {errors.firstName.message}
+                </p>
+              )}
+              <p className="mt-1.5 text-xs text-slate-400 flex items-center gap-1">
+                <Shield className="w-3.5 h-3.5" aria-hidden />
+                Cognome casuale e email istituzionale nome.cognome@team.it
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Ruolo in azienda
+              </label>
+              <div className="relative">
+                <Briefcase
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
+                  aria-hidden
                 />
-                {errors.firstName && (
-                  <p className="mt-1.5 text-sm text-red-600" role="alert">
-                    {errors.firstName.message}
-                  </p>
-                )}
+                <select
+                  id="role"
+                  aria-invalid={Boolean(errors.role)}
+                  className={`${inputClass(Boolean(errors.role))} pl-10 appearance-none`}
+                  {...register('role')}
+                >
+                  <option value="" disabled>
+                    Seleziona il tuo ruolo
+                  </option>
+                  {COMPANY_ROLES.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Cognome
-                </label>
-                <input
-                  id="lastName"
-                  autoComplete="family-name"
-                  aria-invalid={Boolean(errors.lastName)}
-                  className={inputClass(Boolean(errors.lastName))}
-                  placeholder="Rossi"
-                  {...register('lastName')}
-                />
-                {errors.lastName && (
-                  <p className="mt-1.5 text-sm text-red-600" role="alert">
-                    {errors.lastName.message}
-                  </p>
-                )}
-              </div>
+              {errors.role && (
+                <p className="mt-1.5 text-sm text-red-600" role="alert">
+                  {errors.role.message}
+                </p>
+              )}
+              {selectedRole && (
+                <p className="mt-2 text-xs text-indigo-600 bg-indigo-50 rounded-lg px-3 py-2">
+                  Task di benvenuto: {ONBOARDING_TASK_PREVIEW[selectedRole]}
+                </p>
+              )}
             </div>
 
             <div>
@@ -193,29 +220,6 @@ export function RegisterPage() {
                 <p className="mt-1.5 text-sm text-red-600" role="alert">
                   {errors.username.message}
                 </p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                aria-invalid={Boolean(errors.email)}
-                className={inputClass(Boolean(errors.email))}
-                placeholder="nome@team.it"
-                {...register('email')}
-              />
-              {errors.email && (
-                <p className="mt-1.5 text-sm text-red-600" role="alert">
-                  {errors.email.message}
-                </p>
-              )}
-              {!errors.email && (
-                <p className="mt-1.5 text-xs text-slate-400">Solo indirizzi @team.it</p>
               )}
             </div>
 

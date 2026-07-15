@@ -15,6 +15,14 @@ async function columnExists(db: Database, table: string, column: string): Promis
   return rows.some((row) => row.name === column)
 }
 
+async function tableExists(db: Database, table: string): Promise<boolean> {
+  const row = await db.get<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name=?`,
+    [table]
+  )
+  return (row?.count ?? 0) > 0
+}
+
 export async function runMigrations(db: Database): Promise<void> {
   if (!(await columnExists(db, 'attachments', 'originalName'))) {
     await db.exec(`ALTER TABLE attachments ADD COLUMN originalName TEXT`)
@@ -400,6 +408,22 @@ export async function runMigrations(db: Database): Promise<void> {
   }
 
   await migrateMemberIntegerIds(db)
+
+  if (!(await tableExists(db, 'password_reset_tokens'))) {
+    await db.exec(`
+      CREATE TABLE password_reset_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        memberId INTEGER NOT NULL,
+        tokenHash TEXT NOT NULL,
+        expiresAt TEXT NOT NULL,
+        usedAt TEXT,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY (memberId) REFERENCES members(id) ON DELETE CASCADE
+      );
+      CREATE INDEX idx_password_reset_token_hash ON password_reset_tokens(tokenHash);
+      CREATE INDEX idx_password_reset_member ON password_reset_tokens(memberId);
+    `)
+  }
 
   const roleByFirstName: Record<string, CompanyRole> = {
     lorenzo: 'Developer',

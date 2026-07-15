@@ -1,7 +1,15 @@
 import type { Request, Response, NextFunction } from 'express'
 import { login, register, getAuthUserById } from '../services/authService'
+import {
+  requestPasswordReset,
+  resetPassword,
+} from '../services/passwordResetService'
 import { validateLoginInput } from '../validators/authValidator'
 import { validateRegisterInput } from '../validators/registerValidator'
+import {
+  validateForgotPasswordInput,
+  validateResetPasswordInput,
+} from '../validators/passwordResetValidator'
 
 export async function loginHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -36,6 +44,34 @@ export async function meHandler(req: Request, res: Response, next: NextFunction)
       return
     }
     res.json({ user })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function forgotPasswordHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const input = validateForgotPasswordInput(req.body)
+    const result = await requestPasswordReset(input.email)
+    res.json(result)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function resetPasswordHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const input = validateResetPasswordInput(req.body)
+    const result = await resetPassword(input.token, input.password)
+    res.json(result)
   } catch (error) {
     next(error)
   }

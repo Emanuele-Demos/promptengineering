@@ -74,6 +74,9 @@ export function errorHandler(
     err.message.includes('La password deve contenere') ||
     err.message.includes('Dati di login non validi') ||
     err.message.includes('Dati di registrazione non validi') ||
+    err.message.includes('Dati non validi') ||
+    err.message.includes('Token di reimpostazione non valido') ||
+    err.message.includes('Link di reimpostazione non valido o scaduto') ||
     err.message.includes('email istituzionale')
   ) {
     res.status(400).json({ message: err.message })

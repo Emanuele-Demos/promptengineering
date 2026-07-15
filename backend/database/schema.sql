@@ -154,3 +154,16 @@ CREATE TABLE IF NOT EXISTS goal_history (
     createdAt TEXT NOT NULL,
     FOREIGN KEY (userId) REFERENCES members(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    memberId INTEGER NOT NULL,
+    tokenHash TEXT NOT NULL,
+    expiresAt TEXT NOT NULL,
+    usedAt TEXT,
+    createdAt TEXT NOT NULL,
+    FOREIGN KEY (memberId) REFERENCES members(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_token_hash ON password_reset_tokens(tokenHash);
+CREATE INDEX IF NOT EXISTS idx_password_reset_member ON password_reset_tokens(memberId);

@@ -41,3 +41,14 @@ export declare function login(params: {
 }): Promise<LoginResponse>
 
 export declare function fetchCurrentUser(token: string): Promise<MeResponse>
+
+export interface MessageResponse {
+  message: string
+}
+
+export declare function forgotPassword(params: { email: string }): Promise<MessageResponse>
+
+export declare function resetPassword(params: {
+  token: string
+  password: string
+}): Promise<MessageResponse>

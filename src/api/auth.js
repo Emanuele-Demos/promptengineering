@@ -64,3 +64,33 @@ export async function fetchCurrentUser(token) {
 
   return handleResponse(response)
 }
+
+export async function forgotPassword({ email }) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  return handleResponse(response)
+}
+
+export async function resetPassword({ token, password }) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    })
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  return handleResponse(response)
+}

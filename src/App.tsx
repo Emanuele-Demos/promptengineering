@@ -7,6 +7,7 @@ import { GuestRoute } from "./routes/GuestRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { Dashboard } from "./pages/Dashboard";
 import { Board } from "./pages/Board";
 import { Team } from "./pages/Team";
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/registrati" element={<RegisterPage />} />
             <Route path="/password-dimenticata" element={<ForgotPasswordPage />} />
+            <Route path="/reimposta-password" element={<ResetPasswordPage />} />
           </Route>
 
           <Route element={<ProtectedRoute />}>

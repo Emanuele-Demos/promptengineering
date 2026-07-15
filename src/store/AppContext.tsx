@@ -41,9 +41,9 @@ interface AppContextValue extends AppState {
   restoreTask: (id: string) => void
   deleteTaskPermanently: (id: string) => void
   addMember: (member: Omit<TeamMember, 'id' | 'color'>) => void
-  updateMember: (id: string, updates: Partial<TeamMember>) => void
-  deleteMember: (id: string) => void
-  getMember: (id: string | null) => TeamMember | undefined
+  updateMember: (id: number, updates: Partial<TeamMember>) => void
+  deleteMember: (id: number) => void
+  getMember: (id: number | null) => TeamMember | undefined
   tasksByStatus: (status: TaskStatus) => Task[]
   overdueTasks: Task[]
   archivedTasks: Task[]
@@ -235,7 +235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...prev.members,
           {
             ...member,
-            id: uuid(),
+            id: -(prev.members.length + 1),
             color: MEMBER_COLORS[prev.members.length % MEMBER_COLORS.length],
           },
         ],
@@ -245,7 +245,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   const updateMember = useCallback(
-    (id: string, updates: Partial<TeamMember>) => {
+    (id: number, updates: Partial<TeamMember>) => {
       commit((prev) => ({
         ...prev,
         members: prev.members.map((m) =>
@@ -257,7 +257,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   const deleteMember = useCallback(
-    (id: string) => {
+    (id: number) => {
       commit((prev) => ({
         ...prev,
         members: prev.members.filter((m) => m.id !== id),
@@ -287,8 +287,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   const getMember = useCallback(
-    (id: string | null) =>
-      id ? state.members.find((m) => m.id === id) : undefined,
+    (id: number | null) =>
+      id !== null ? state.members.find((m) => m.id === id) : undefined,
     [state.members],
   )
 

@@ -25,12 +25,12 @@ export function Team() {
   } = useMembers()
   const { tasks, refreshData } = useApp()
   const [showForm, setShowForm] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<MemberForm>(emptyForm)
   const [formError, setFormError] = useState<string | null>(null)
 
   const activeTaskCountByMember = useMemo(() => {
-    const counts = new Map<string, number>()
+    const counts = new Map<number, number>()
     for (const task of tasks) {
       if (!task.assigneeId || task.archived || task.status === 'done') continue
       counts.set(task.assigneeId, (counts.get(task.assigneeId) ?? 0) + 1)

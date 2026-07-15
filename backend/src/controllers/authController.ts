@@ -29,7 +29,7 @@ export async function registerHandler(
 
 export async function meHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = res.locals.userId as string
+    const userId = res.locals.userId as number
     const user = await getAuthUserById(userId)
     if (!user) {
       res.status(404).json({ message: 'Utente non trovato' })

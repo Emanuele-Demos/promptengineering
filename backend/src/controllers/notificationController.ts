@@ -1,10 +1,10 @@
 import type { Request, Response } from 'express'
 import * as notificationService from '../services/notificationService'
-import { getUserId } from '../middleware/userContext'
+import { getAuthenticatedUserId } from '../middleware/userContext'
 import { getParam } from '../utils/params'
 
 export async function getNotifications(req: Request, res: Response): Promise<void> {
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   const filter = (req.query.filter as string) ?? 'all'
   const validFilter = filter === 'read' || filter === 'unread' ? filter : 'all'
   const notifications = await notificationService.getNotificationsByUserId(userId, validFilter)
@@ -12,13 +12,13 @@ export async function getNotifications(req: Request, res: Response): Promise<voi
 }
 
 export async function getUnreadCount(req: Request, res: Response): Promise<void> {
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   const count = await notificationService.getUnreadCount(userId)
   res.json({ count })
 }
 
 export async function getNotification(req: Request, res: Response): Promise<void> {
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   const notification = await notificationService.getNotificationById(getParam(req.params.id))
 
   if (!notification) {
@@ -35,7 +35,7 @@ export async function getNotification(req: Request, res: Response): Promise<void
 }
 
 export async function markAsRead(req: Request, res: Response): Promise<void> {
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   const notification = await notificationService.markNotificationAsRead(
     getParam(req.params.id),
     userId
@@ -44,7 +44,7 @@ export async function markAsRead(req: Request, res: Response): Promise<void> {
 }
 
 export async function deleteNotification(req: Request, res: Response): Promise<void> {
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   await notificationService.deleteNotification(getParam(req.params.id), userId)
   res.json({ message: 'Notifica eliminata' })
 }

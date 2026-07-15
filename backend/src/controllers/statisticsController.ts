@@ -1,10 +1,10 @@
 import type { Request, Response } from 'express'
 import { getStatistics } from '../services/statisticsService'
-import { getUserId } from '../middleware/userContext'
+import { getAuthenticatedUserId } from '../middleware/userContext'
 import { isStatisticsFilter } from '../utils/statisticsPeriod'
 
 export async function getStatisticsHandler(req: Request, res: Response): Promise<void> {
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   const filterParam = req.query.filter
   const filter = typeof filterParam === 'string' && isStatisticsFilter(filterParam) ? filterParam : '7d'
   const from = typeof req.query.from === 'string' ? req.query.from : undefined

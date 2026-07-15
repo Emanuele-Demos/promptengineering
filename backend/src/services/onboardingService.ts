@@ -9,7 +9,7 @@ function generateTaskId(): string {
 }
 
 export async function createOnboardingTaskForMember(
-  memberId: string,
+  memberId: number,
   role: CompanyRole,
   db: Database
 ): Promise<{ id: string; title: string }> {

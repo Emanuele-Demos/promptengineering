@@ -9,12 +9,12 @@ interface DueReminderRow {
   title: string
   description: string
   dueDate: string | null
-  assigneeId: string | null
+  assigneeId: number | null
   reminderDate: string
   reminderType: string
 }
 
-const DEFAULT_USER_ID = 'm1'
+const DEFAULT_USER_ID = 1
 
 export async function processDueReminders(db?: Database): Promise<number> {
   const connection = db ?? (await getDatabase())

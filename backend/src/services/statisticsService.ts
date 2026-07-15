@@ -42,7 +42,7 @@ interface TaskStatRow {
   id: string
   status: string
   priority: string
-  assigneeId: string | null
+  assigneeId: number | null
   categoryId: string | null
   dueDate: string | null
   createdAt: string
@@ -50,7 +50,7 @@ interface TaskStatRow {
   categoryName: string | null
 }
 
-async function getUserTasks(userId: string, db: Database): Promise<TaskStatRow[]> {
+async function getUserTasks(userId: number, db: Database): Promise<TaskStatRow[]> {
   return (await db.all(
     `SELECT t.id, t.status, t.priority, t.assigneeId, t.categoryId, t.dueDate,
             t.createdAt, t.updatedAt, c.name AS categoryName
@@ -81,7 +81,7 @@ function isOverdue(task: TaskStatRow, todayStr: string): boolean {
 }
 
 export async function getStatistics(
-  userId: string,
+  userId: number,
   filter: StatisticsFilter = '7d',
   customFrom?: string,
   customTo?: string,

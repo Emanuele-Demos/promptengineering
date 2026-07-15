@@ -5,7 +5,7 @@ import { getDatabase } from '../config/database'
 
 interface NotificationRow {
   id: string
-  userId: string
+  userId: number
   taskId: string
   title: string
   message: string
@@ -28,14 +28,14 @@ function mapNotification(row: NotificationRow): Notification {
 }
 
 export async function getNotificationsByUserId(
-  userId: string,
+  userId: number,
   filter: 'all' | 'read' | 'unread' = 'all',
   db?: Database
 ): Promise<Notification[]> {
   const connection = db ?? (await getDatabase())
   let query = `SELECT id, userId, taskId, title, message, isRead, createdAt, readAt
                FROM notifications WHERE userId = ?`
-  const params: string[] = [userId]
+  const params: (string | number)[] = [userId]
 
   if (filter === 'read') query += ` AND isRead = 1`
   if (filter === 'unread') query += ` AND isRead = 0`
@@ -46,7 +46,7 @@ export async function getNotificationsByUserId(
   return rows.map(mapNotification)
 }
 
-export async function getUnreadCount(userId: string, db?: Database): Promise<number> {
+export async function getUnreadCount(userId: number, db?: Database): Promise<number> {
   const connection = db ?? (await getDatabase())
   const row = await connection.get<{ count: number }>(
     `SELECT COUNT(*) AS count FROM notifications WHERE userId = ? AND isRead = 0`,
@@ -93,7 +93,7 @@ export async function createNotification(
 
 export async function markNotificationAsRead(
   id: string,
-  userId: string,
+  userId: number,
   db?: Database
 ): Promise<Notification> {
   const connection = db ?? (await getDatabase())
@@ -115,7 +115,7 @@ export async function markNotificationAsRead(
 
 export async function deleteNotification(
   id: string,
-  userId: string,
+  userId: number,
   db?: Database
 ): Promise<void> {
   const connection = db ?? (await getDatabase())

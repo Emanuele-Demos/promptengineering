@@ -8,6 +8,7 @@ import { buildInstitutionalEmail } from '../utils/institutionalEmail'
 import { createOnboardingTaskForMember } from '../services/onboardingService'
 import type { CompanyRole } from '../data/companyRoles'
 import { isCompanyRole } from '../data/companyRoles'
+import { migrateMemberIntegerIds, membersUseIntegerIds } from './migrateMemberIntegerIds'
 
 async function columnExists(db: Database, table: string, column: string): Promise<boolean> {
   const rows = (await db.all(`PRAGMA table_info(${table})`)) as { name: string }[]
@@ -272,7 +273,7 @@ export async function runMigrations(db: Database): Promise<void> {
 
   const membersWithoutPassword = (await db.all(
     `SELECT id FROM members WHERE password IS NULL OR password = ''`
-  )) as { id: string }[]
+  )) as { id: number | string }[]
 
   if (membersWithoutPassword.length > 0) {
     const hashed = await hashDefaultPassword()
@@ -303,7 +304,7 @@ export async function runMigrations(db: Database): Promise<void> {
 
   const membersWithoutNames = (await db.all(
     `SELECT id, name FROM members WHERE firstName IS NULL OR firstName = ''`
-  )) as { id: string; name: string }[]
+  )) as { id: number | string; name: string }[]
 
   for (const member of membersWithoutNames) {
     const parts = member.name.trim().split(/\s+/)
@@ -324,57 +325,61 @@ export async function runMigrations(db: Database): Promise<void> {
        OR LOWER(name) LIKE 'test %'
   `)
 
-  const seedNames: Record<string, { firstName: string; lastName: string }> = {
-    m1: { firstName: 'Marco', lastName: 'Rossi' },
-    m2: { firstName: 'Laura', lastName: 'Bianchi' },
-    m3: { firstName: 'Giuseppe', lastName: 'Verdi' },
-    m4: { firstName: 'Anna', lastName: 'Neri' },
-  }
+  const usesIntegerIds = await membersUseIntegerIds(db)
 
-  for (const [id, names] of Object.entries(seedNames)) {
-    await db.run(
-      `UPDATE members SET firstName = ?, lastName = ?, name = ?, updatedAt = datetime('now') WHERE id = ?`,
-      [names.firstName, names.lastName, `${names.firstName} ${names.lastName}`, id]
-    )
-  }
-
-  const membersWithPlaceholder = (await db.all(
-    `SELECT id, firstName, lastName, name FROM members
-     WHERE id NOT IN ('m1','m2','m3','m4')
-       AND (
-         lastName IS NULL
-         OR LOWER(TRIM(lastName)) = 'team'
-         OR LOWER(TRIM(lastName)) = 'utente'
-         OR name LIKE '% Team'
-       )`
-  )) as { id: string; firstName: string | null; lastName: string | null; name: string }[]
-
-  for (const member of membersWithPlaceholder) {
-    const firstName =
-      member.firstName?.trim() || member.name.trim().split(/\s+/)[0] || 'Utente'
-
-    if (!isPlaceholderLastName(member.lastName) && !member.name.trim().endsWith(' Team')) {
-      continue
+  if (!usesIntegerIds) {
+    const seedNames: Record<string, { firstName: string; lastName: string }> = {
+      m1: { firstName: 'Marco', lastName: 'Rossi' },
+      m2: { firstName: 'Laura', lastName: 'Bianchi' },
+      m3: { firstName: 'Giuseppe', lastName: 'Verdi' },
+      m4: { firstName: 'Anna', lastName: 'Neri' },
     }
 
-    const lastName = generateRandomLastName()
-    await db.run(
-      `UPDATE members SET firstName = ?, lastName = ?, name = ?, updatedAt = datetime('now') WHERE id = ?`,
-      [firstName, lastName, `${firstName} ${lastName}`, member.id]
-    )
-  }
-
-  const registeredUsers = (await db.all(
-    `SELECT id FROM members WHERE id LIKE 'u%'`
-  )) as { id: string }[]
-
-  if (registeredUsers.length > 0) {
-    const hashed = await hashDefaultPassword()
-    for (const user of registeredUsers) {
+    for (const [id, names] of Object.entries(seedNames)) {
       await db.run(
-        `UPDATE members SET password = ?, updatedAt = datetime('now') WHERE id = ?`,
-        [hashed, user.id]
+        `UPDATE members SET firstName = ?, lastName = ?, name = ?, updatedAt = datetime('now') WHERE id = ?`,
+        [names.firstName, names.lastName, `${names.firstName} ${names.lastName}`, id]
       )
+    }
+
+    const membersWithPlaceholder = (await db.all(
+      `SELECT id, firstName, lastName, name FROM members
+       WHERE id NOT IN ('m1','m2','m3','m4')
+         AND (
+           lastName IS NULL
+           OR LOWER(TRIM(lastName)) = 'team'
+           OR LOWER(TRIM(lastName)) = 'utente'
+           OR name LIKE '% Team'
+         )`
+    )) as { id: string; firstName: string | null; lastName: string | null; name: string }[]
+
+    for (const member of membersWithPlaceholder) {
+      const firstName =
+        member.firstName?.trim() || member.name.trim().split(/\s+/)[0] || 'Utente'
+
+      if (!isPlaceholderLastName(member.lastName) && !member.name.trim().endsWith(' Team')) {
+        continue
+      }
+
+      const lastName = generateRandomLastName()
+      await db.run(
+        `UPDATE members SET firstName = ?, lastName = ?, name = ?, updatedAt = datetime('now') WHERE id = ?`,
+        [firstName, lastName, `${firstName} ${lastName}`, member.id]
+      )
+    }
+
+    const registeredUsers = (await db.all(
+      `SELECT id FROM members WHERE id LIKE 'u%'`
+    )) as { id: string }[]
+
+    if (registeredUsers.length > 0) {
+      const hashed = await hashDefaultPassword()
+      for (const user of registeredUsers) {
+        await db.run(
+          `UPDATE members SET password = ?, updatedAt = datetime('now') WHERE id = ?`,
+          [hashed, user.id]
+        )
+      }
     }
   }
 
@@ -382,7 +387,7 @@ export async function runMigrations(db: Database): Promise<void> {
     `SELECT id, firstName, lastName, email FROM members
      WHERE firstName IS NOT NULL AND TRIM(firstName) != ''
        AND lastName IS NOT NULL AND TRIM(lastName) != ''`
-  )) as { id: string; firstName: string; lastName: string; email: string }[]
+  )) as { id: number | string; firstName: string; lastName: string; email: string }[]
 
   for (const member of membersForEmail) {
     const email = buildInstitutionalEmail(member.firstName, member.lastName)
@@ -394,6 +399,8 @@ export async function runMigrations(db: Database): Promise<void> {
     }
   }
 
+  await migrateMemberIntegerIds(db)
+
   const roleByFirstName: Record<string, CompanyRole> = {
     lorenzo: 'Developer',
     mario: 'QA Engineer',
@@ -403,7 +410,7 @@ export async function runMigrations(db: Database): Promise<void> {
     `SELECT id, firstName, lastName, role FROM members
      WHERE LOWER(firstName) IN ('mario', 'lorenzo')
        AND (role IS NULL OR TRIM(role) = '' OR role = 'User')`
-  )) as { id: string; firstName: string; lastName: string; role: string }[]
+  )) as { id: number; firstName: string; lastName: string; role: string }[]
 
   for (const member of membersNeedingRole) {
     const role = roleByFirstName[member.firstName.trim().toLowerCase()]

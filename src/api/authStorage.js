@@ -34,7 +34,7 @@ export function saveAuth({ token, user, rememberMe }) {
   const storage = rememberMe ? localStorage : sessionStorage
   storage.setItem(AUTH_TOKEN_KEY, token)
   storage.setItem(AUTH_USER_KEY, JSON.stringify(user))
-  localStorage.setItem(USER_ID_KEY, user.id)
+  localStorage.setItem(USER_ID_KEY, String(user.id))
   localStorage.setItem(REMEMBER_KEY, rememberMe ? 'true' : 'false')
 }
 

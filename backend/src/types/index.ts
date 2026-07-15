@@ -2,7 +2,7 @@ export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 
 export interface TeamMember {
-  id: string
+  id: number
   name: string
   email: string
   role: string
@@ -23,7 +23,7 @@ export type GoalHistoryStatus = 'reached' | 'not_reached'
 
 export interface Goal {
   id: string
-  userId: string
+  userId: number
   type: GoalType
   target: number
   periodStart: string
@@ -41,7 +41,7 @@ export interface GoalWithProgress extends Goal {
 export interface GoalHistory {
   id: string
   goalId: string
-  userId: string
+  userId: number
   type: GoalType
   target: number
   completedTasks: number
@@ -68,7 +68,7 @@ export type RepeatDay =
 
 export interface Notification {
   id: string
-  userId: string
+  userId: number
   taskId: string
   title: string
   message: string
@@ -101,7 +101,7 @@ export interface Project {
   id: string
   name: string
   description: string
-  ownerId: string
+  ownerId: number
   owner?: TeamMember
   createdAt: string
   updatedAt: string
@@ -134,7 +134,7 @@ export interface Task {
   attachments: Attachment[]
   status: TaskStatus
   priority: TaskPriority
-  assigneeId: string | null
+  assigneeId: number | null
   categoryId: string | null
   projectId?: string | null
   category?: Category | null
@@ -178,7 +178,7 @@ interface TaskRow {
   notes: string
   status: TaskStatus
   priority: TaskPriority
-  assigneeId: string | null
+  assigneeId: number | null
   categoryId: string | null
   projectId: string | null
   dueDate: string | null

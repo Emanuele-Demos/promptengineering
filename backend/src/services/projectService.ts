@@ -12,7 +12,7 @@ interface ProjectRow {
   id: string
   name: string
   description: string
-  ownerId: string
+  ownerId: number
   createdAt: string
   updatedAt: string
 }
@@ -94,12 +94,12 @@ const PROJECT_STATS_SELECT = `
 `
 
 export async function getProjectsByOwner(
-  ownerId: string,
+  ownerId: number,
   search?: string,
   db?: Database
 ): Promise<Project[]> {
   const connection = db ?? (await getDatabase())
-  const params: string[] = [ownerId]
+  const params: (string | number)[] = [ownerId]
   let where = 'WHERE p.ownerId = ?'
   if (search?.trim()) {
     where += ' AND p.name LIKE ? COLLATE NOCASE'
@@ -119,7 +119,7 @@ export async function getProjectsByOwner(
 
 export async function getProjectById(
   id: string,
-  ownerId: string,
+  ownerId: number,
   db?: Database
 ): Promise<Project | undefined> {
   const connection = db ?? (await getDatabase())
@@ -134,7 +134,7 @@ export async function getProjectById(
 }
 
 export async function createProject(
-  input: { name: string; description: string; ownerId: string },
+  input: { name: string; description: string; ownerId: number },
   db?: Database
 ): Promise<Project> {
   const connection = db ?? (await getDatabase())
@@ -169,7 +169,7 @@ export async function createProject(
 
 export async function updateProject(
   id: string,
-  ownerId: string,
+  ownerId: number,
   input: { name: string; description: string },
   db?: Database
 ): Promise<Project> {
@@ -190,7 +190,7 @@ export async function updateProject(
   return updated
 }
 
-export async function deleteProject(id: string, ownerId: string, db?: Database): Promise<void> {
+export async function deleteProject(id: string, ownerId: number, db?: Database): Promise<void> {
   const connection = db ?? (await getDatabase())
   const existing = await getProjectById(id, ownerId, connection)
   if (!existing) throw new Error('Progetto non trovato')
@@ -215,7 +215,7 @@ export async function projectExists(id: string, db?: Database): Promise<boolean>
   return !!row
 }
 
-export async function projectOwnedBy(id: string, ownerId: string, db?: Database): Promise<boolean> {
+export async function projectOwnedBy(id: string, ownerId: number, db?: Database): Promise<boolean> {
   const connection = db ?? (await getDatabase())
   const row = await connection.get<{ id: string }>(
     `SELECT id FROM projects WHERE id = ? AND ownerId = ?`,

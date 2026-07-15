@@ -13,7 +13,7 @@ import {
 
 interface GoalRow {
   id: string
-  userId: string
+  userId: number
   type: GoalType
   target: number
   periodStart: string
@@ -24,7 +24,7 @@ interface GoalRow {
 interface GoalHistoryRow {
   id: string
   goalId: string
-  userId: string
+  userId: number
   type: GoalType
   target: number
   completedTasks: number
@@ -52,7 +52,7 @@ function mapHistoryRow(row: GoalHistoryRow): GoalHistory {
 }
 
 export async function countCompletedTasksInPeriod(
-  userId: string,
+  userId: number,
   periodStart: string,
   periodEnd: string,
   db?: Database
@@ -140,7 +140,7 @@ async function ensureCurrentPeriod(goal: Goal, db: Database): Promise<Goal> {
   return { ...goal, periodStart, updatedAt: now }
 }
 
-export async function getGoalsByUserId(userId: string, db?: Database): Promise<GoalWithProgress[]> {
+export async function getGoalsByUserId(userId: number, db?: Database): Promise<GoalWithProgress[]> {
   const connection = db ?? (await getDatabase())
   const rows = (await connection.all(
     `SELECT id, userId, type, target, periodStart, createdAt, updatedAt
@@ -158,7 +158,7 @@ export async function getGoalsByUserId(userId: string, db?: Database): Promise<G
 
 export async function getGoalById(
   id: string,
-  userId: string,
+  userId: number,
   db?: Database
 ): Promise<GoalWithProgress | undefined> {
   const connection = db ?? (await getDatabase())
@@ -173,7 +173,7 @@ export async function getGoalById(
 }
 
 export async function upsertGoal(
-  userId: string,
+  userId: number,
   type: GoalType,
   target: number,
   db?: Database
@@ -225,7 +225,7 @@ export async function upsertGoal(
 
 export async function updateGoal(
   id: string,
-  userId: string,
+  userId: number,
   target: number,
   db?: Database
 ): Promise<GoalWithProgress> {
@@ -243,7 +243,7 @@ export async function updateGoal(
   return (await getGoalById(id, userId, connection))!
 }
 
-export async function deleteGoal(id: string, userId: string, db?: Database): Promise<void> {
+export async function deleteGoal(id: string, userId: number, db?: Database): Promise<void> {
   const connection = db ?? (await getDatabase())
   const existing = await connection.get<{ id: string }>(
     `SELECT id FROM goals WHERE id = ? AND userId = ?`,
@@ -254,7 +254,7 @@ export async function deleteGoal(id: string, userId: string, db?: Database): Pro
 }
 
 export async function getGoalHistory(
-  userId: string,
+  userId: number,
   type?: GoalType,
   db?: Database
 ): Promise<GoalHistory[]> {
@@ -262,7 +262,7 @@ export async function getGoalHistory(
   let query = `SELECT id, goalId, userId, type, target, completedTasks, completionPercentage,
                       status, periodStart, periodEnd, createdAt
                FROM goal_history WHERE userId = ?`
-  const params: string[] = [userId]
+  const params: (string | number)[] = [userId]
 
   if (type) {
     query += ` AND type = ?`

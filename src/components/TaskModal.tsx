@@ -41,7 +41,7 @@ const emptyForm = {
   links: '',
   status: 'todo' as TaskStatus,
   priority: 'medium' as TaskPriority,
-  assigneeId: '' as string,
+  assigneeId: null as number | null,
   dueDate: '',
   tags: '',
   categoryId: '',
@@ -96,7 +96,7 @@ export function TaskModal({
         links: task.links.join(', '),
         status: task.status,
         priority: task.priority,
-        assigneeId: task.assigneeId ?? '',
+        assigneeId: task.assigneeId ?? null,
         dueDate: task.dueDate ?? '',
         tags: task.tags.join(', '),
         categoryId: task.categoryId ?? '',
@@ -155,7 +155,7 @@ export function TaskModal({
       attachments: [],
       status: form.status,
       priority: form.priority,
-      assigneeId: form.assigneeId || null,
+      assigneeId: form.assigneeId,
       categoryId: form.categoryId || null,
       projectId: form.projectId || null,
       dueDate: form.dueDate || null,
@@ -285,7 +285,7 @@ export function TaskModal({
         attachments: [] as Task['attachments'],
         status: form.status,
         priority: form.priority,
-        assigneeId: form.assigneeId || null,
+        assigneeId: form.assigneeId,
         categoryId: form.categoryId || null,
         projectId: form.projectId || null,
         dueDate: form.dueDate || null,
@@ -691,8 +691,13 @@ export function TaskModal({
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Assegnato a</label>
               <select
-                value={form.assigneeId}
-                onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}
+                value={form.assigneeId ?? ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    assigneeId: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Non assegnato</option>

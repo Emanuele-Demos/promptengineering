@@ -4,7 +4,7 @@ export type GoalHistoryStatus = 'reached' | 'not_reached'
 
 export interface GoalWithProgressDto {
   id: string
-  userId: string
+  userId: number
   type: GoalType
   target: number
   periodStart: string
@@ -19,7 +19,7 @@ export interface GoalWithProgressDto {
 export interface GoalHistoryDto {
   id: string
   goalId: string
-  userId: string
+  userId: number
   type: GoalType
   target: number
   completedTasks: number

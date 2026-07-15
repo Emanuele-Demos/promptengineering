@@ -19,7 +19,7 @@ export type TaskArchivedFilter = 'exclude' | 'only' | 'all'
 
 export interface TaskQueryOptions {
   favorite?: boolean
-  assigneeId?: string
+  assigneeId?: number
   archived?: TaskArchivedFilter
 }
 
@@ -147,7 +147,7 @@ export async function getAllTasks(
 ): Promise<Task[]> {
   const connection = db ?? (await getDatabase())
   let query = `SELECT ${TASK_SELECT} FROM tasks WHERE 1=1`
-  const params: string[] = []
+  const params: (string | number)[] = []
 
   const archivedFilter = options?.archived ?? 'exclude'
   if (archivedFilter === 'exclude') {
@@ -409,7 +409,7 @@ export async function upsertTask(
 }
 
 export async function getEstimatedTimeStats(
-  assigneeId: string,
+  assigneeId: number,
   db?: Database
 ): Promise<{ totalEstimatedMinutes: number; openTasks: number; formatted: string }> {
   const connection = db ?? (await getDatabase())

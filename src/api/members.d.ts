@@ -2,7 +2,7 @@ import type { TeamMember } from '../types'
 
 export declare function getMembers(): Promise<TeamMember[]>
 
-export declare function getMember(id: string): Promise<TeamMember>
+export declare function getMember(id: number): Promise<TeamMember>
 
 export declare function createMember(data: {
   name: string
@@ -12,7 +12,7 @@ export declare function createMember(data: {
 }): Promise<TeamMember>
 
 export declare function updateMember(
-  id: string,
+  id: number,
   data: {
     name: string
     email: string
@@ -21,4 +21,4 @@ export declare function updateMember(
   },
 ): Promise<TeamMember>
 
-export declare function deleteMember(id: string): Promise<{ message: string }>
+export declare function deleteMember(id: number): Promise<{ message: string }>

@@ -9,7 +9,7 @@ export async function getAllMembers(db?: Database): Promise<TeamMember[]> {
   )) as TeamMember[]
 }
 
-export async function getMemberById(id: string, db?: Database): Promise<TeamMember | undefined> {
+export async function getMemberById(id: number, db?: Database): Promise<TeamMember | undefined> {
   const connection = db ?? (await getDatabase())
   return connection.get<TeamMember>(
     `SELECT id, name, email, role, color FROM members WHERE id = ?`,
@@ -18,19 +18,19 @@ export async function getMemberById(id: string, db?: Database): Promise<TeamMemb
 }
 
 export async function createMember(
-  member: TeamMember,
+  member: Omit<TeamMember, 'id'>,
   db?: Database
 ): Promise<TeamMember> {
   const connection = db ?? (await getDatabase())
-  await connection.run(
-    `INSERT INTO members (id, name, email, role, color) VALUES (?, ?, ?, ?, ?)`,
-    [member.id, member.name, member.email, member.role, member.color]
+  const result = await connection.run(
+    `INSERT INTO members (name, email, role, color) VALUES (?, ?, ?, ?)`,
+    [member.name, member.email, member.role, member.color]
   )
-  return member
+  return { id: Number(result.lastID), ...member }
 }
 
 export async function updateMember(
-  id: string,
+  id: number,
   member: Omit<TeamMember, 'id'>,
   db?: Database
 ): Promise<void> {
@@ -41,7 +41,7 @@ export async function updateMember(
   )
 }
 
-export async function deleteMember(id: string, db?: Database): Promise<void> {
+export async function deleteMember(id: number, db?: Database): Promise<void> {
   const connection = db ?? (await getDatabase())
   await connection.run(`DELETE FROM members WHERE id = ?`, [id])
 }

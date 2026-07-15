@@ -58,7 +58,7 @@ export function useMembers() {
   )
 
   const updateMember = useCallback(
-    async (id: string, updates: Partial<Omit<TeamMember, 'id'>>) => {
+    async (id: number, updates: Partial<Omit<TeamMember, 'id'>>) => {
       const existing = members.find((m) => m.id === id)
       if (!existing) return
 
@@ -84,7 +84,7 @@ export function useMembers() {
   )
 
   const deleteMember = useCallback(
-    async (id: string) => {
+    async (id: number) => {
       setSaving(true)
       setError('')
       try {

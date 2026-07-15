@@ -1,6 +1,6 @@
 export interface NotificationDto {
   id: string
-  userId: string
+  userId: number
   taskId: string
   title: string
   message: string
@@ -10,7 +10,7 @@ export interface NotificationDto {
 }
 
 export function getCurrentUserId(): string
-export function setCurrentUserId(userId: string): void
+export function setCurrentUserId(userId: number): void
 export function getNotifications(filter?: 'all' | 'read' | 'unread'): Promise<NotificationDto[]>
 export function getUnreadNotificationCount(): Promise<{ count: number }>
 export function markNotificationAsRead(id: string): Promise<NotificationDto>

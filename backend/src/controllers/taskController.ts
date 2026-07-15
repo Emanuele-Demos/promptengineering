@@ -3,7 +3,8 @@ import { randomUUID } from 'crypto'
 import type { Task } from '../types'
 import * as taskService from '../services/taskService'
 import { getParam } from '../utils/params'
-import { getUserId } from '../middleware/userContext'
+import { getAuthenticatedUserId } from '../middleware/userContext'
+import { parseOptionalMemberId } from '../utils/memberId'
 import {
   isReminderType,
   resolveReminderFields,
@@ -147,7 +148,7 @@ function buildTaskPayload(
     priority: (body.priority as Task['priority']) ?? existing?.priority ?? 'medium',
     assigneeId:
       body.assigneeId !== undefined
-        ? ((body.assigneeId as string | null) || null)
+        ? parseOptionalMemberId(body.assigneeId)
         : (existing?.assigneeId ?? null),
     categoryId:
       body.categoryId !== undefined
@@ -182,7 +183,7 @@ function buildTaskPayload(
   }
 }
 
-function assertTaskOwner(task: Task, userId: string, res: Response): boolean {
+function assertTaskOwner(task: Task, userId: number, res: Response): boolean {
   if (task.assigneeId && task.assigneeId !== userId) {
     res.status(403).json({ message: 'Non autorizzato a modificare questo task' })
     return false
@@ -198,19 +199,21 @@ function parseFavoriteQuery(value: unknown): boolean | undefined {
 
 export async function getTasks(req: Request, res: Response): Promise<void> {
   const favorite = parseFavoriteQuery(req.query.favorite)
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   const assigneeId =
-    typeof req.query.assigneeId === 'string' ? req.query.assigneeId : undefined
+    typeof req.query.assigneeId === 'string'
+      ? parseOptionalMemberId(req.query.assigneeId) ?? undefined
+      : undefined
 
   const tasks = await taskService.getAllTasks({
     favorite,
-    assigneeId: favorite === true ? assigneeId || userId : assigneeId,
+    assigneeId: favorite === true ? assigneeId ?? userId : assigneeId,
   })
   res.json(tasks)
 }
 
 export async function getFavoriteTasks(req: Request, res: Response): Promise<void> {
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   const tasks = await taskService.getAllTasks({
     favorite: true,
     assigneeId: userId,
@@ -220,13 +223,13 @@ export async function getFavoriteTasks(req: Request, res: Response): Promise<voi
 }
 
 export async function getArchivedTasks(req: Request, res: Response): Promise<void> {
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   const tasks = await taskService.getAllTasks({ archived: 'only', assigneeId: userId })
   res.json(tasks)
 }
 
 export async function getEstimatedTimeStats(req: Request, res: Response): Promise<void> {
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   const stats = await taskService.getEstimatedTimeStats(userId)
   res.json(stats)
 }
@@ -286,7 +289,7 @@ export async function updateTask(req: Request, res: Response): Promise<void> {
     return
   }
 
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   if (!assertTaskOwner(existing, userId, res)) return
 
   const body = req.body as Record<string, unknown>
@@ -329,7 +332,7 @@ export async function deleteTask(req: Request, res: Response): Promise<void> {
     return
   }
 
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   if (!assertTaskOwner(existing, userId, res)) return
 
   await taskService.deleteTask(id)
@@ -344,7 +347,7 @@ export async function archiveTaskHandler(req: Request, res: Response): Promise<v
     return
   }
 
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   if (!assertTaskOwner(existing, userId, res)) return
 
   if (existing.archived) {
@@ -370,7 +373,7 @@ export async function restoreTaskHandler(req: Request, res: Response): Promise<v
     return
   }
 
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   if (!assertTaskOwner(existing, userId, res)) return
 
   if (!existing.archived) {
@@ -396,7 +399,7 @@ export async function deleteTaskPermanent(req: Request, res: Response): Promise<
     return
   }
 
-  const userId = getUserId(req)
+  const userId = getAuthenticatedUserId(req, res)
   if (!assertTaskOwner(existing, userId, res)) return
 
   if (!existing.archived) {

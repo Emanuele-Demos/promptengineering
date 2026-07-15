@@ -1,7 +1,7 @@
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS members (
-    id TEXT PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     firstName TEXT,
     lastName TEXT,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
-    ownerId TEXT NOT NULL,
+    ownerId INTEGER NOT NULL,
     createdAt TEXT NOT NULL,
     updatedAt TEXT NOT NULL,
     FOREIGN KEY (ownerId) REFERENCES members(id) ON DELETE CASCADE
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     notes TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL,
     priority TEXT NOT NULL,
-    assigneeId TEXT,
+    assigneeId INTEGER,
     categoryId TEXT,
     projectId TEXT,
     dueDate TEXT,
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS stato (
 
 CREATE TABLE IF NOT EXISTS notifications (
     id TEXT PRIMARY KEY,
-    userId TEXT NOT NULL,
+    userId INTEGER NOT NULL,
     taskId TEXT NOT NULL,
     title TEXT NOT NULL,
     message TEXT NOT NULL,
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 CREATE TABLE IF NOT EXISTS goals (
     id TEXT PRIMARY KEY,
-    userId TEXT NOT NULL,
+    userId INTEGER NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('daily', 'weekly')),
     target INTEGER NOT NULL,
     periodStart TEXT NOT NULL,
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS goals (
 CREATE TABLE IF NOT EXISTS goal_history (
     id TEXT PRIMARY KEY,
     goalId TEXT NOT NULL,
-    userId TEXT NOT NULL,
+    userId INTEGER NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('daily', 'weekly')),
     target INTEGER NOT NULL,
     completedTasks INTEGER NOT NULL,

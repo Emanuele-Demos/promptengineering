@@ -16,6 +16,7 @@ import type { TeamMember } from '../types'
 import type { RegisterInput } from '../validators/registerValidator'
 import { generateRandomLastName } from '../utils/randomLastName'
 import { buildInstitutionalEmail } from '../utils/institutionalEmail'
+import { parseUserIdFromTokenSub } from '../utils/memberId'
 import { createOnboardingTaskForMember } from './onboardingService'
 
 export interface AuthMember extends TeamMember {
@@ -27,7 +28,7 @@ export interface AuthMember extends TeamMember {
 }
 
 export interface AuthUser {
-  id: string
+  id: number
   name: string
   firstName: string
   lastName: string
@@ -37,7 +38,7 @@ export interface AuthUser {
 }
 
 function toAuthUser(member: {
-  id: string
+  id: number
   name: string
   email: string
   role: string
@@ -72,10 +73,6 @@ export interface RegisterResult {
   onboardingTask?: { id: string; title: string }
 }
 
-function generateMemberId(): string {
-  return `u${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
-}
-
 function pickMemberColor(dbCount: number): string {
   return MEMBER_COLORS[dbCount % MEMBER_COLORS.length]
 }
@@ -92,17 +89,17 @@ export async function comparePassword(password: string, hash: string): Promise<b
   return bcrypt.compare(password, hash)
 }
 
-export function signToken(userId: string, rememberMe = false): { token: string; expiresIn: string } {
+export function signToken(userId: number, rememberMe = false): { token: string; expiresIn: string } {
   const expiresIn = rememberMe ? JWT_REMEMBER_EXPIRES_IN : JWT_EXPIRES_IN
   const options: SignOptions = { expiresIn: expiresIn as SignOptions['expiresIn'] }
   const token = jwt.sign({ sub: userId }, JWT_SECRET, options)
   return { token, expiresIn }
 }
 
-export function verifyToken(token: string): { userId: string } {
+export function verifyToken(token: string): { userId: number } {
   const payload = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload
-  const userId = typeof payload.sub === 'string' ? payload.sub : ''
-  if (!userId) {
+  const userId = parseUserIdFromTokenSub(payload.sub)
+  if (userId === null) {
     throw new Error('Token non valido')
   }
   return { userId }
@@ -131,10 +128,10 @@ export async function getMemberByUsername(
   )
 }
 
-export async function getAuthUserById(id: string, db?: Database): Promise<AuthUser | undefined> {
+export async function getAuthUserById(id: number, db?: Database): Promise<AuthUser | undefined> {
   const connection = db ?? (await getDatabase())
   const row = await connection.get<{
-    id: string
+    id: number
     name: string
     firstName: string | null
     lastName: string | null
@@ -189,7 +186,6 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
   const db = await getDatabase()
 
   const countRow = await db.get<{ count: number }>('SELECT COUNT(*) AS count FROM members')
-  const id = generateMemberId()
   const lastName = generateRandomLastName()
   const email = buildInstitutionalEmail(input.firstName, lastName)
   const name = `${input.firstName} ${lastName}`
@@ -214,13 +210,12 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
     }
   }
 
-  await db.run(
+  const insertResult = await db.run(
     `INSERT INTO members (
-      id, name, firstName, lastName, username, email, role, color,
+      name, firstName, lastName, username, email, role, color,
       password, isActive, createdAt, updatedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      id,
       name,
       input.firstName,
       lastName,
@@ -235,6 +230,7 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
     ]
   )
 
+  const id = Number(insertResult.lastID)
   const onboardingTask = await createOnboardingTaskForMember(id, input.role, db)
 
   const user: AuthUser = {

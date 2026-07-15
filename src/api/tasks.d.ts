@@ -15,7 +15,7 @@ export function restoreTaskApi(taskId: string): Promise<unknown>
 export function deleteTaskPermanent(taskId: string): Promise<unknown>
 export function getTasks(params?: {
   favorite?: boolean
-  assigneeId?: string
+  assigneeId?: number
 }): Promise<unknown[]>
 export function upsertTask(task: Record<string, unknown>): Promise<unknown>
 export function getTaskNotes(taskId: string): Promise<unknown[]>

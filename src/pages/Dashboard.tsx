@@ -13,6 +13,7 @@ import { useApp } from '../store/AppContext'
 import { useGoals } from '../hooks/useGoals'
 import { useStatistics } from '../hooks/useStatistics'
 import { GoalProgressCard } from '../components/GoalProgressCard'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { STATUS_LABELS, type StatisticsFilter } from '../types'
 import { MemberAvatar } from '../components/MemberAvatar'
 import { PriorityBadge } from '../components/PriorityBadge'
@@ -150,7 +151,8 @@ export function Dashboard() {
             Dashboard interattiva con KPI e grafici aggiornati dal backend.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+          <ThemeToggle />
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as StatisticsFilter)}
@@ -259,7 +261,7 @@ export function Dashboard() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <section className="bg-white rounded-xl border border-slate-200 shadow-sm">
+          <section className="recent-tasks-section bg-white rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between p-4 border-b border-slate-100">
               <h2 className="font-semibold text-slate-900">Task recenti</h2>
               <Link
@@ -279,13 +281,13 @@ export function Dashboard() {
                 return (
                   <div
                     key={task.id}
-                    className="flex items-start sm:items-center gap-3 p-4 hover:bg-slate-50 transition-colors"
+                    className="recent-task-row flex items-start sm:items-center gap-3 p-4 transition-all duration-200"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{task.title}</p>
+                      <p className="recent-task-title text-sm font-medium text-slate-900 truncate">{task.title}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
                         <span
-                          className={`text-[11px] px-1.5 py-0.5 rounded ${style.bg} ${style.text}`}
+                          className={`recent-task-chip text-[11px] px-1.5 py-0.5 rounded ${style.bg} ${style.text}`}
                         >
                           {STATUS_LABELS[task.status] || task.status}
                         </span>

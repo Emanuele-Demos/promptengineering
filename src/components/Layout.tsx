@@ -126,26 +126,26 @@ export function Layout() {
 
           <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/70 bg-white/80 px-3 py-2 backdrop-blur-xl shadow-[0_-10px_40px_-20px_rgba(15,23,42,0.45)] lg:hidden">
             <div className="mx-auto flex max-w-md items-center justify-around gap-1.5">
-              <NavLink to="/" end className={({ isActive }) => `flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500 hover:-translate-y-0.5 hover:scale-[1.02] hover:border-[#2b3f68] hover:bg-[#1b2a4a] hover:text-[#dbe7ff] hover:shadow-[0_12px_24px_rgba(15,23,42,0.28)] active:translate-y-0 active:scale-100'}`}>
+              <NavLink to="/" end className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500'}`}>
                 <Home className="mb-1 h-4 w-4" />
                 <span>Home</span>
               </NavLink>
-              <NavLink to="/board" className={({ isActive }) => `flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500 hover:-translate-y-0.5 hover:scale-[1.02] hover:border-[#2b3f68] hover:bg-[#1b2a4a] hover:text-[#dbe7ff] hover:shadow-[0_12px_24px_rgba(15,23,42,0.28)] active:translate-y-0 active:scale-100'}`}>
+              <NavLink to="/board" className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500'}`}>
                 <LayoutGrid className="mb-1 h-4 w-4" />
                 <span>Board</span>
               </NavLink>
-              <NavLink to="/team" className={({ isActive }) => `flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500 hover:-translate-y-0.5 hover:scale-[1.02] hover:border-[#2b3f68] hover:bg-[#1b2a4a] hover:text-[#dbe7ff] hover:shadow-[0_12px_24px_rgba(15,23,42,0.28)] active:translate-y-0 active:scale-100'}`}>
+              <NavLink to="/team" className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500'}`}>
                 <Users className="mb-1 h-4 w-4" />
                 <span>Team</span>
               </NavLink>
-              <NavLink to="/calendario" className={({ isActive }) => `flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500 hover:-translate-y-0.5 hover:scale-[1.02] hover:border-[#2b3f68] hover:bg-[#1b2a4a] hover:text-[#dbe7ff] hover:shadow-[0_12px_24px_rgba(15,23,42,0.28)] active:translate-y-0 active:scale-100'}`}>
+              <NavLink to="/calendario" className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500'}`}>
                 <CalendarDays className="mb-1 h-4 w-4" />
                 <span>Cal.</span>
               </NavLink>
               {user ? (
                 <NavLink
                   to="/profile"
-                  className={({ isActive }) => `flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500 hover:-translate-y-0.5 hover:scale-[1.02] hover:border-[#2b3f68] hover:bg-[#1b2a4a] hover:text-[#dbe7ff] hover:shadow-[0_12px_24px_rgba(15,23,42,0.28)] active:translate-y-0 active:scale-100'}`}
+                  className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500'}`}
                 >
                   <UserCircle2 className="mb-1 h-4 w-4" />
                   <span>Profilo</span>

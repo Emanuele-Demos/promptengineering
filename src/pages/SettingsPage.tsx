@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Bell, Lock, Moon, Palette, ShieldCheck, Sun } from 'lucide-react'
+import { ArrowLeft, Bell, Lock, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export function SettingsPage() {
@@ -64,34 +64,6 @@ export function SettingsPage() {
           >
             Cambia password
           </button>
-        </div>
-
-        <div className={`rounded-3xl border p-5 shadow-lg ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
-          <div className="flex items-center gap-3">
-            <Palette className="h-5 w-5 text-indigo-600" />
-            <div>
-              <h2 className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Tema</h2>
-              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Scegli il tema dell’interfaccia.</p>
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setTheme('light')}
-              className={`flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition ${theme === 'light' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
-            >
-              <Sun className="h-4 w-4" />
-              Light
-            </button>
-            <button
-              type="button"
-              onClick={() => setTheme('dark')}
-              className={`flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition ${theme === 'dark' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : isDark ? 'border-slate-700 text-slate-200 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
-            >
-              <Moon className="h-4 w-4" />
-              Dark
-            </button>
-          </div>
         </div>
 
         <div className={`rounded-3xl border p-5 shadow-lg ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>

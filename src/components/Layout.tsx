@@ -2,16 +2,30 @@ import { useEffect, useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { CalendarDays, ChevronDown, Home, LayoutGrid, LogOut, Settings, UserCircle2, Users } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { getUserAvatar, type UserAvatarSelection } from '../utils/userAvatar'
 
 export function Layout() {
   const { user, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [avatar, setAvatar] = useState<UserAvatarSelection | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('teamflow-theme')
     document.documentElement.classList.toggle('theme-dark', savedTheme === 'dark')
   }, [])
+
+  useEffect(() => {
+    if (!user) {
+      setAvatar(null)
+      return
+    }
+
+    const syncAvatar = () => setAvatar(getUserAvatar(user.id))
+    syncAvatar()
+    window.addEventListener('teamflow-avatar-updated', syncAvatar)
+    return () => window.removeEventListener('teamflow-avatar-updated', syncAvatar)
+  }, [user])
 
   return (
     <div className="app-layout-shell min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.16),_transparent_38%),linear-gradient(135deg,_#f8fafc_0%,_#eef2ff_100%)] text-slate-900">
@@ -54,13 +68,19 @@ export function Layout() {
                 onClick={() => setMenuOpen((prev) => !prev)}
                 className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white/80 p-2.5 text-left shadow-sm transition hover:shadow-md"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-sm font-semibold text-white">
-                  {user.name
-                    .split(' ')
-                    .map((part) => part[0])
-                    .join('')
-                    .slice(0, 2)
-                    .toUpperCase()}
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-sm font-semibold text-white">
+                  {avatar?.type === 'image' ? (
+                    <img src={avatar.value} alt="Avatar utente" className="h-full w-full object-cover" />
+                  ) : avatar?.type === 'preset' ? (
+                    <span>{avatar.value}</span>
+                  ) : (
+                    user.name
+                      .split(' ')
+                      .map((part) => part[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-slate-900">{user.name}</p>
@@ -83,7 +103,7 @@ export function Layout() {
                         setMenuOpen(false)
                         navigate('/profile')
                       }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                      className="desktop-user-menu-item flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-700"
                     >
                       <UserCircle2 className="h-4 w-4" />
                       Profilo
@@ -94,7 +114,7 @@ export function Layout() {
                         setMenuOpen(false)
                         navigate('/settings')
                       }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                      className="desktop-user-menu-item flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-700"
                     >
                       <Settings className="h-4 w-4" />
                       Impostazioni
@@ -106,7 +126,7 @@ export function Layout() {
                         setMenuOpen(false)
                         navigate('/login', { replace: true })
                       }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                      className="desktop-user-menu-item desktop-user-menu-item--danger flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-red-600"
                     >
                       <LogOut className="h-4 w-4" />
                       Logout
@@ -126,26 +146,26 @@ export function Layout() {
 
           <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/70 bg-white/80 px-3 py-2 backdrop-blur-xl shadow-[0_-10px_40px_-20px_rgba(15,23,42,0.45)] lg:hidden">
             <div className="mx-auto flex max-w-md items-center justify-around gap-1.5">
-              <NavLink to="/" end className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500'}`}>
+              <NavLink to="/" end className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active' : 'border-transparent text-slate-500'}`}>
                 <Home className="mb-1 h-4 w-4" />
                 <span>Home</span>
               </NavLink>
-              <NavLink to="/board" className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500'}`}>
+              <NavLink to="/board" className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active' : 'border-transparent text-slate-500'}`}>
                 <LayoutGrid className="mb-1 h-4 w-4" />
                 <span>Board</span>
               </NavLink>
-              <NavLink to="/team" className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500'}`}>
+              <NavLink to="/team" className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active' : 'border-transparent text-slate-500'}`}>
                 <Users className="mb-1 h-4 w-4" />
                 <span>Team</span>
               </NavLink>
-              <NavLink to="/calendario" className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500'}`}>
+              <NavLink to="/calendario" className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active' : 'border-transparent text-slate-500'}`}>
                 <CalendarDays className="mb-1 h-4 w-4" />
                 <span>Cal.</span>
               </NavLink>
               {user ? (
                 <NavLink
                   to="/profile"
-                  className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active border-[#d8ddff] bg-[#eef1ff] text-indigo-700 shadow-[0_4px_14px_rgba(79,70,229,0.18)]' : 'border-transparent text-slate-500'}`}
+                  className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active' : 'border-transparent text-slate-500'}`}
                 >
                   <UserCircle2 className="mb-1 h-4 w-4" />
                   <span>Profilo</span>

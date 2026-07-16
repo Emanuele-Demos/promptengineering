@@ -15,7 +15,7 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
       </h4>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {attachments.map((file) => {
-          const isImage = file.type.startsWith('image/')
+          const isImage = file.mimeType.startsWith('image/')
 
           return (
             <div
@@ -37,8 +37,8 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
                   </div>
                 )}
                 <div className="text-xs truncate min-w-0">
-                  <p className="font-semibold text-slate-700 truncate" title={file.fileName}>
-                    {file.fileName}
+                  <p className="font-semibold text-slate-700 truncate" title={file.originalName}>
+                    {file.originalName}
                   </p>
                   <p className="text-slate-500">
                     {(file.size / 1024).toFixed(1)} KB

@@ -14,28 +14,39 @@ import type {
   TaskPriority,
   TaskStatus,
   TeamMember,
-  Folder,
 } from '../types'
 import { MEMBER_COLORS } from '../types'
-
-const API_BASE = 'http://localhost:3001/api'
+import { formatEstimatedTimeLong } from '../utils/estimatedTime'
+import {
+  archiveTaskApi,
+  deleteTaskPermanent,
+  getArchivedTasks,
+  getTasks,
+  restoreTaskApi,
+  syncTaskFavorite,
+  syncTaskStatus,
+} from '../api/tasks.js'
+import { getMembers } from '../api/members.js'
 
 interface AppContextValue extends AppState {
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void
+  loading: boolean
+  error: string
+  refreshData: () => Promise<void>
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => string
   updateTask: (id: string, updates: Partial<Task>) => void
   deleteTask: (id: string) => void
   moveTask: (id: string, status: TaskStatus) => void
+  toggleFavorite: (id: string) => void
+  archiveTask: (id: string) => void
+  restoreTask: (id: string) => void
+  deleteTaskPermanently: (id: string) => void
   addMember: (member: Omit<TeamMember, 'id' | 'color'>) => void
-  updateMember: (id: string, updates: Partial<TeamMember>) => void
-  deleteMember: (id: string) => void
-  addFolder: (folder: Omit<Folder, 'id'>) => void
-  updateFolder: (id: string, updates: Partial<Folder>) => void
-  deleteFolder: (id: string) => void
-  resetData: () => void
-  getMember: (id: string | null) => TeamMember | undefined
+  updateMember: (id: number, updates: Partial<TeamMember>) => void
+  deleteMember: (id: number) => void
+  getMember: (id: number | null) => TeamMember | undefined
   tasksByStatus: (status: TaskStatus) => Task[]
   overdueTasks: Task[]
-  loading: boolean
+  archivedTasks: Task[]
   stats: {
     total: number
     done: number
@@ -45,274 +56,345 @@ interface AppContextValue extends AppState {
     completedLate: number
     inReview: number
     todo: number
+    totalEstimatedMinutes: number
+    totalEstimatedFormatted: string
+    openTasksWithEstimate: number
   }
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>({ tasks: [], members: [], folders: [] })
+  const [state, setState] = useState<AppState>({ tasks: [], members: [] })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const refreshData = useCallback(async () => {
+    setError('')
+    try {
+      const [activeTasks, archivedTasks, members] = await Promise.all([
+        getTasks() as Promise<Task[]>,
+        getArchivedTasks() as Promise<Task[]>,
+        getMembers() as Promise<TeamMember[]>,
+      ])
+      setState({
+        tasks: [...activeTasks, ...archivedTasks],
+        members,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore imprevisto')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [resTasks, resMembers, resFolders] = await Promise.all([
-          fetch(`${API_BASE}/tasks`).then((r) => r.json()),
-          fetch(`${API_BASE}/members`).then((r) => r.json()),
-          fetch(`${API_BASE}/folders`).then((r) => r.json()),
-        ])
+    setLoading(true)
+    refreshData()
+  }, [refreshData])
 
-        const normalizedTasks = (resTasks as Task[]).map((task) => ({
-          ...task,
-          notes: task.notes ?? '',
-          links: task.links ?? [],
-          attachments: task.attachments ?? [],
-          estimatedTime: task.estimatedTime ?? '',
-        }))
-
-        setState({ tasks: normalizedTasks, members: resMembers, folders: resFolders })
-      } catch (err) {
-        console.error('Errore nel caricamento dei dati dal server:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
+  const commit = useCallback((updater: (prev: AppState) => AppState) => {
+    setState(updater)
   }, [])
 
-  const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const now = new Date().toISOString()
-    const { notes = '', links = [], attachments = [], estimatedTime = '', ...rest } = task
-    const newTask: Task = {
-      id: uuid(),
-      createdAt: now,
-      updatedAt: now,
-      notes,
-      links,
-      attachments,
-      estimatedTime,
-      ...rest,
-    }
+  const addTask = useCallback(
+    (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const now = new Date().toISOString()
+      const id = uuid()
+      commit((prev) => ({
+        ...prev,
+        tasks: [
+          ...prev.tasks,
+          { ...task, id, createdAt: now, updatedAt: now },
+        ],
+      }))
+      return id
+    },
+    [commit],
+  )
 
-    setState((prev) => ({
-      ...prev,
-      tasks: [...prev.tasks, newTask],
-    }))
+  const updateTask = useCallback(
+    (id: string, updates: Partial<Task>) => {
+      commit((prev) => ({
+        ...prev,
+        tasks: prev.tasks.map((t) =>
+          t.id === id
+            ? { ...t, ...updates, updatedAt: new Date().toISOString() }
+            : t,
+        ),
+      }))
+    },
+    [commit],
+  )
 
-    fetch(`${API_BASE}/tasks`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newTask),
-    }).catch((err) => console.error('Errore durante la creazione del task:', err))
-  }, [])
-
-  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-    const now = new Date().toISOString()
-    const taskUpdates = { ...updates, updatedAt: now }
-
-    setState((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => (t.id === id ? { ...t, ...taskUpdates } : t)),
-    }))
-
-    fetch(`${API_BASE}/tasks/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(taskUpdates),
-    }).catch((err) => console.error("Errore durante l'aggiornamento del task:", err))
-  }, [])
-
-  const deleteTask = useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      tasks: prev.tasks.filter((t) => t.id !== id),
-    }))
-
-    fetch(`${API_BASE}/tasks/${id}`, {
-      method: 'DELETE',
-    }).catch((err) => console.error("Errore durante l'eliminazione del task:", err))
-  }, [])
+  const deleteTask = useCallback(
+    (id: string) => {
+      commit((prev) => ({
+        ...prev,
+        tasks: prev.tasks.filter((t) => t.id !== id),
+      }))
+    },
+    [commit],
+  )
 
   const moveTask = useCallback(
     (id: string, status: TaskStatus) => {
       updateTask(id, { status })
+      syncTaskStatus(id, status).catch(() => {})
     },
     [updateTask],
   )
 
-  const addMember = useCallback((member: Omit<TeamMember, 'id' | 'color'>) => {
-    const newId = uuid()
-    setState((prev) => {
-      const color = MEMBER_COLORS[prev.members.length % MEMBER_COLORS.length]
-      const newMember = { ...member, id: newId, color }
+  const toggleFavorite = useCallback(
+    (id: string) => {
+      commit((prev) => {
+        const task = prev.tasks.find((t) => t.id === id)
+        if (!task || task.archived) return prev
 
-      fetch(`${API_BASE}/members`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newMember),
-      }).catch((err) => console.error("Errore durante l'aggiunta del membro:", err))
+        const favorite = !Boolean(task.favorite)
+        syncTaskFavorite(id, favorite).catch(() => {})
 
-      return {
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) =>
+            t.id === id
+              ? { ...t, favorite, updatedAt: new Date().toISOString() }
+              : t,
+          ),
+        }
+      })
+    },
+    [commit],
+  )
+
+  const archiveTask = useCallback(
+    (id: string) => {
+      commit((prev) => {
+        const task = prev.tasks.find((t) => t.id === id)
+        if (!task || task.archived) return prev
+
+        const now = new Date().toISOString()
+        archiveTaskApi(id).catch(() => {})
+
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) =>
+            t.id === id
+              ? { ...t, archived: true, archivedAt: now, updatedAt: now }
+              : t,
+          ),
+        }
+      })
+    },
+    [commit],
+  )
+
+  const restoreTask = useCallback(
+    (id: string) => {
+      commit((prev) => {
+        const task = prev.tasks.find((t) => t.id === id)
+        if (!task || !task.archived) return prev
+
+        const now = new Date().toISOString()
+        restoreTaskApi(id).catch(() => {})
+
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) =>
+            t.id === id
+              ? { ...t, archived: false, archivedAt: null, updatedAt: now }
+              : t,
+          ),
+        }
+      })
+    },
+    [commit],
+  )
+
+  const deleteTaskPermanently = useCallback(
+    (id: string) => {
+      commit((prev) => {
+        const task = prev.tasks.find((t) => t.id === id)
+        if (!task?.archived) return prev
+
+        deleteTaskPermanent(id).catch(() => {})
+        return {
+          ...prev,
+          tasks: prev.tasks.filter((t) => t.id !== id),
+        }
+      })
+    },
+    [commit],
+  )
+
+  const addMember = useCallback(
+    (member: Omit<TeamMember, 'id' | 'color'>) => {
+      commit((prev) => ({
         ...prev,
-        members: [...prev.members, newMember],
-      }
-    })
-  }, [])
+        members: [
+          ...prev.members,
+          {
+            ...member,
+            id: -(prev.members.length + 1),
+            color: MEMBER_COLORS[prev.members.length % MEMBER_COLORS.length],
+          },
+        ],
+      }))
+    },
+    [commit],
+  )
 
-  const updateMember = useCallback((id: string, updates: Partial<TeamMember>) => {
-    setState((prev) => ({
-      ...prev,
-      members: prev.members.map((m) => (m.id === id ? { ...m, ...updates } : m)),
-    }))
+  const updateMember = useCallback(
+    (id: number, updates: Partial<TeamMember>) => {
+      commit((prev) => ({
+        ...prev,
+        members: prev.members.map((m) =>
+          m.id === id ? { ...m, ...updates } : m,
+        ),
+      }))
+    },
+    [commit],
+  )
 
-    fetch(`${API_BASE}/members/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
-    }).catch((err) => console.error("Errore durante l'aggiornamento del membro:", err))
-  }, [])
+  const deleteMember = useCallback(
+    (id: number) => {
+      commit((prev) => ({
+        ...prev,
+        members: prev.members.filter((m) => m.id !== id),
+        tasks: prev.tasks.map((t) =>
+          t.assigneeId === id ? { ...t, assigneeId: null } : t,
+        ),
+      }))
+    },
+    [commit],
+  )
 
-  const deleteMember = useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      members: prev.members.filter((m) => m.id !== id),
-      tasks: prev.tasks.map((t) => (t.assigneeId === id ? { ...t, assigneeId: null } : t)),
-    }))
+  const activeTasks = useMemo(
+    () => state.tasks.filter((t) => !t.archived),
+    [state.tasks],
+  )
 
-    fetch(`${API_BASE}/members/${id}`, {
-      method: 'DELETE',
-    }).catch((err) => console.error("Errore durante l'eliminazione del membro:", err))
-  }, [])
-
-  const addFolder = useCallback((folder: Omit<Folder, 'id'>) => {
-    const newId = uuid()
-    const newFolder = { ...folder, id: newId }
-
-    setState((prev) => ({
-      ...prev,
-      folders: [...prev.folders, newFolder],
-    }))
-
-    fetch(`${API_BASE}/folders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newFolder),
-    }).catch((err) => console.error('Errore durante la creazione della cartella:', err))
-  }, [])
-
-  const updateFolder = useCallback((id: string, updates: Partial<Folder>) => {
-    setState((prev) => ({
-      ...prev,
-      folders: prev.folders.map((f) => (f.id === id ? { ...f, ...updates } : f)),
-    }))
-
-    fetch(`${API_BASE}/folders/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
-    }).catch((err) => console.error("Errore durante l'aggiornamento della cartella:", err))
-  }, [])
-
-  const deleteFolder = useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      folders: prev.folders.filter((f) => f.id !== id),
-      tasks: prev.tasks.map((t) => (t.folderId === id ? { ...t, folderId: null } : t)),
-    }))
-
-    fetch(`${API_BASE}/folders/${id}`, {
-      method: 'DELETE',
-    }).catch((err) => console.error("Errore durante l'eliminazione della cartella:", err))
-  }, [])
-
-  const resetData = useCallback(async () => {
-    try {
-      await fetch(`${API_BASE}/reset`, { method: 'POST' })
-      const [resTasks, resMembers, resFolders] = await Promise.all([
-        fetch(`${API_BASE}/tasks`).then((r) => r.json()),
-        fetch(`${API_BASE}/members`).then((r) => r.json()),
-        fetch(`${API_BASE}/folders`).then((r) => r.json()),
-      ])
-      setState({ tasks: resTasks, members: resMembers, folders: resFolders })
-    } catch (err) {
-      console.error('Errore durante il reset dei dati:', err)
-    }
-  }, [])
+  const archivedTasks = useMemo(
+    () =>
+      state.tasks
+        .filter((t) => t.archived)
+        .sort(
+          (a, b) =>
+            new Date(b.archivedAt ?? b.updatedAt).getTime() -
+            new Date(a.archivedAt ?? a.updatedAt).getTime(),
+        ),
+    [state.tasks],
+  )
 
   const getMember = useCallback(
-    (id: string | null) => (id ? state.members.find((m) => m.id === id) : undefined),
+    (id: number | null) =>
+      id !== null ? state.members.find((m) => m.id === id) : undefined,
     [state.members],
   )
 
   const tasksByStatus = useCallback(
-    (status: TaskStatus) => state.tasks.filter((t) => t.status === status),
-    [state.tasks],
+    (status: TaskStatus) => activeTasks.filter((t) => t.status === status),
+    [activeTasks],
   )
 
   const overdueTasks = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
-    return state.tasks.filter((t) => t.dueDate && t.dueDate < today && t.status !== 'done')
-  }, [state.tasks])
+    return activeTasks.filter(
+      (t) =>
+        t.dueDate &&
+        t.dueDate < today &&
+        t.status !== 'done',
+    )
+  }, [activeTasks])
 
   const stats = useMemo(
-    () => ({
-      total: state.tasks.length,
-      done: state.tasks.filter((t) => t.status === 'done').length,
-      inProgress: state.tasks.filter((t) => t.status === 'in_progress').length,
-      overdue: overdueTasks.length,
-      completedOnTime: state.tasks.filter(
-        (t) => t.status === 'done' && (!t.dueDate || t.updatedAt.slice(0, 10) <= t.dueDate),
-      ).length,
-      completedLate: state.tasks.filter(
-        (t) => t.status === 'done' && !!t.dueDate && t.updatedAt.slice(0, 10) > t.dueDate,
-      ).length,
-      inReview: state.tasks.filter((t) => t.status === 'review').length,
-      todo: state.tasks.filter((t) => t.status === 'todo').length,
-    }),
-    [state.tasks, overdueTasks],
+    () => {
+      const openTasks = activeTasks.filter((t) => t.status !== 'done')
+      const totalEstimatedMinutes = openTasks.reduce(
+        (sum, t) => sum + (t.estimatedTime ?? 0),
+        0,
+      )
+
+      return {
+        total: activeTasks.length,
+        done: activeTasks.filter((t) => t.status === 'done').length,
+        inProgress: activeTasks.filter((t) => t.status === 'in_progress').length,
+        overdue: overdueTasks.length,
+        completedOnTime: activeTasks.filter(
+          (t) =>
+            t.status === 'done' &&
+            (!t.dueDate || t.updatedAt.slice(0, 10) <= t.dueDate),
+        ).length,
+        completedLate: activeTasks.filter(
+          (t) =>
+            t.status === 'done' &&
+            !!t.dueDate &&
+            t.updatedAt.slice(0, 10) > t.dueDate,
+        ).length,
+        inReview: activeTasks.filter((t) => t.status === 'review').length,
+        todo: activeTasks.filter((t) => t.status === 'todo').length,
+        totalEstimatedMinutes,
+        totalEstimatedFormatted: formatEstimatedTimeLong(totalEstimatedMinutes),
+        openTasksWithEstimate: openTasks.filter((t) => (t.estimatedTime ?? 0) > 0).length,
+      }
+    },
+    [activeTasks, overdueTasks],
   )
 
   const value = useMemo(
     () => ({
       ...state,
+      loading,
+      error,
+      refreshData,
       addTask,
       updateTask,
       deleteTask,
       moveTask,
+      toggleFavorite,
+      archiveTask,
+      restoreTask,
+      deleteTaskPermanently,
       addMember,
       updateMember,
       deleteMember,
-      addFolder,
-      updateFolder,
-      deleteFolder,
-      resetData,
       getMember,
       tasksByStatus,
       overdueTasks,
-      loading,
+      archivedTasks,
       stats,
     }),
     [
       state,
+      loading,
+      error,
+      refreshData,
       addTask,
       updateTask,
       deleteTask,
       moveTask,
+      toggleFavorite,
+      archiveTask,
+      restoreTask,
+      deleteTaskPermanently,
       addMember,
       updateMember,
       deleteMember,
-      addFolder,
-      updateFolder,
-      deleteFolder,
-      resetData,
       getMember,
       tasksByStatus,
       overdueTasks,
-      loading,
+      archivedTasks,
       stats,
     ],
   )
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen min-h-[100dvh] items-center justify-center bg-slate-50">
+        <p className="text-sm text-slate-500">Caricamento dati...</p>
+      </div>
+    )
+  }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }

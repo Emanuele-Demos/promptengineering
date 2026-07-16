@@ -1,32 +1,111 @@
-import { useState, useRef } from 'react'
-import { Clock3, Plus, Search } from 'lucide-react'
-import type { Task, TaskStatus } from '../types'
+import { useMemo, useEffect, useState, useRef } from 'react'
+import { Plus, Search, Timer } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
+import type { Task, TaskPriority, TaskStatus } from '../types'
 import { useApp } from '../store/AppContext'
+import { useCategories } from '../hooks/useCategories'
 import { KanbanColumn } from '../components/KanbanColumn'
 import { TaskModal } from '../components/TaskModal'
 
 const COLUMNS: TaskStatus[] = ['todo', 'in_progress', 'review', 'done']
 
+type SortField = 'default' | 'priority' | 'dueDate' | 'estimatedTime'
+type SortDir = 'asc' | 'desc'
+
+const PRIORITY_ORDER: Record<TaskPriority, number> = {
+  urgent: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+}
+
+function sortTasks(tasks: Task[], sortBy: SortField, sortDir: SortDir, favoritesFirst: boolean) {
+  const dir = sortDir === 'asc' ? 1 : -1
+
+  return [...tasks].sort((a, b) => {
+    if (sortBy === 'default' && favoritesFirst) {
+      if (Boolean(a.favorite) !== Boolean(b.favorite)) {
+        return a.favorite ? -1 : 1
+      }
+      return 0
+    }
+
+    if (sortBy === 'priority') {
+      const diff =
+        (PRIORITY_ORDER[a.priority] ?? 0) - (PRIORITY_ORDER[b.priority] ?? 0)
+      return dir * diff
+    }
+
+    if (sortBy === 'dueDate') {
+      const ad = a.dueDate ?? (sortDir === 'asc' ? '9999-12-31' : '')
+      const bd = b.dueDate ?? (sortDir === 'asc' ? '9999-12-31' : '')
+      return dir * ad.localeCompare(bd)
+    }
+
+    if (sortBy === 'estimatedTime') {
+      const missing = sortDir === 'asc' ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER
+      const ae = a.estimatedTime ?? missing
+      const be = b.estimatedTime ?? missing
+      return dir * (ae - be)
+    }
+
+    return 0
+  })
+}
+
 export function Board() {
-  const { tasks, moveTask } = useApp()
+  const { tasks, moveTask, archiveTask, stats } = useApp()
+  const location = useLocation()
+  const { categories, loading: categoriesLoading, getCategoryById } = useCategories()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('todo')
   const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [favoriteFilter, setFavoriteFilter] = useState<'all' | 'favorites'>('all')
+  const [sortBy, setSortBy] = useState<SortField>('default')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [draggingId, setDraggingId] = useState<string | null>(null)
-  const [showEstimatedOnly, setShowEstimatedOnly] = useState(false)
+  const [success, setSuccess] = useState('')
 
-  const filteredTasks = tasks.filter((t) => {
-    const matchesSearch =
-      t.title.toLowerCase().includes(search.toLowerCase()) ||
-      t.description.toLowerCase().includes(search.toLowerCase()) ||
-      t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
+  useEffect(() => {
+    const openTaskId = (location.state as { openTaskId?: string } | null)?.openTaskId
+    if (!openTaskId) return
 
-    const matchesEstimated = !showEstimatedOnly || Boolean(t.estimatedTime?.trim())
+    const task = tasks.find((t) => t.id === openTaskId)
+    if (task) {
+      setSelectedTask(task)
+      setModalOpen(true)
+    }
+    window.history.replaceState({}, document.title)
+  }, [location.state, tasks])
 
-    return matchesSearch && matchesEstimated
-  })
+  const activeTasks = tasks.filter((t) => !t.archived)
+
+  const filteredTasks = useMemo(
+    () =>
+      sortTasks(
+        activeTasks.filter((t) => {
+          const matchesSearch =
+            t.title.toLowerCase().includes(search.toLowerCase()) ||
+            t.description.toLowerCase().includes(search.toLowerCase()) ||
+            t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
+
+          const matchesCategory =
+            !categoryFilter || (t.categoryId ?? null) === categoryFilter
+
+          const matchesFavorite =
+            favoriteFilter === 'favorites' ? Boolean(t.favorite) : true
+
+          return matchesSearch && matchesCategory && matchesFavorite
+        }),
+        sortBy,
+        sortDir,
+        favoriteFilter === 'all' && sortBy === 'default',
+      ),
+    [activeTasks, search, categoryFilter, favoriteFilter, sortBy, sortDir],
+  )
 
   const openCreate = (status: TaskStatus) => {
     setSelectedTask(null)
@@ -46,21 +125,25 @@ export function Board() {
     }
   }
 
+  const handleArchive = (taskId: string) => {
+    archiveTask(taskId)
+    setSuccess('Task archiviato con successo')
+    setTimeout(() => setSuccess(''), 3000)
+  }
 
-
-  // sensitivity multipliers
-  const WHEEL_SCROLL_FACTOR = 0.8 // multiply wheel delta to tune sensitivity
-  const PAN_SENSITIVITY = 1.15 // multiplier for pointer panning
+  // sensitivity multipliers per lo scroll orizzontale della board
+  const WHEEL_SCROLL_FACTOR = 0.8 // moltiplica il delta della rotellina per calibrare la sensibilità
+  const PAN_SENSITIVITY = 1.15 // moltiplicatore per il panning col puntatore
 
   const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (!containerRef.current) return
-    // convert vertical wheel to horizontal scroll on desktop
+    // converte lo scroll verticale della rotellina in scroll orizzontale su desktop
     if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
       containerRef.current.scrollLeft += e.deltaY * WHEEL_SCROLL_FACTOR
     }
   }
 
-  // pointer-based panning (drag-to-scroll) without interfering with draggable tasks
+  // panning con puntatore (drag-to-scroll) senza interferire col drag dei task
   const isPanningRef = useRef(false)
   const panStartXRef = useRef(0)
   const panStartScrollRef = useRef(0)
@@ -72,10 +155,9 @@ export function Board() {
     const el = containerRef.current
     if (!el) return
     const target = e.target as HTMLElement
-    // mark potential pan; we'll activate after threshold movement
     isPotentialPanRef.current = true
     dragStartedRef.current = false
-    // listen for a real dragstart event; if it fires, cancel pan
+    // se parte un vero dragstart, annulla il panning
     const onDragStart = () => {
       dragStartedRef.current = true
       isPotentialPanRef.current = false
@@ -87,25 +169,23 @@ export function Board() {
     }
     dragListenerRef.current = onDragStart
     document.addEventListener('dragstart', onDragStart, true)
-    // only enable custom panning for mouse pointers (desktop)
-    const pointerType = (e as any).pointerType
+    // abilita il panning custom solo per puntatori mouse (desktop)
+    const pointerType = (e as unknown as { pointerType?: string }).pointerType
     if (pointerType && pointerType !== 'mouse') return
-    // mark potential pan; we'll activate after threshold movement
     isPotentialPanRef.current = true
     panStartXRef.current = e.clientX
     panStartScrollRef.current = el.scrollLeft
     try {
       target.setPointerCapture?.(e.pointerId)
-    } catch (err) {
+    } catch {
       /* ignore */
     }
-    // for mouse pointers temporarily disable native touch-action so custom panning works
     try {
       if (!pointerType || pointerType === 'mouse') {
         el.style.touchAction = 'none'
         el.style.cursor = 'grabbing'
       }
-    } catch (err) {
+    } catch {
       /* ignore */
     }
   }
@@ -114,25 +194,14 @@ export function Board() {
     const el = containerRef.current
     if (!el) return
     const dxTotal = e.clientX - panStartXRef.current
-    // dynamic threshold: make smaller when showEstimatedOnly is active
-    const PAN_THRESHOLD = showEstimatedOnly ? 4 : 8
+    const PAN_THRESHOLD = 8
 
     if (!isPanningRef.current && isPotentialPanRef.current) {
       if (Math.abs(dxTotal) >= PAN_THRESHOLD) {
-        // if a real drag was detected, abort panning
         if (dragStartedRef.current) return
         isPanningRef.current = true
-        // reset start points so movement feels smooth from this moment
         panStartXRef.current = e.clientX
         panStartScrollRef.current = el.scrollLeft
-        // if in 'Tempo stimato' mode, disable text selection while panning
-        if (showEstimatedOnly) {
-          try {
-            document.body.style.userSelect = 'none'
-          } catch (err) {
-            /* ignore */
-          }
-        }
       } else {
         return
       }
@@ -142,7 +211,6 @@ export function Board() {
     const dx = e.clientX - panStartXRef.current
     const desired = panStartScrollRef.current - dx * PAN_SENSITIVITY
     const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth)
-    // clamp to bounds to avoid overscroll bounce
     el.scrollLeft = Math.min(maxScroll, Math.max(0, desired))
   }
 
@@ -150,44 +218,74 @@ export function Board() {
     if (!isPanningRef.current && !isPotentialPanRef.current) return
     isPanningRef.current = false
     isPotentialPanRef.current = false
-    // cleanup dragstart listener if still present
     if (dragListenerRef.current) {
       document.removeEventListener('dragstart', dragListenerRef.current, true)
       dragListenerRef.current = null
     }
-    // restore text selection if we disabled it
-    try {
-      document.body.style.userSelect = ''
-    } catch (err) {
-      /* ignore */
-    }
-    // restore touch-action and cursor
     try {
       const el = containerRef.current
       if (el) {
         el.style.touchAction = ''
         el.style.cursor = 'grab'
       }
-    } catch (err) {
+    } catch {
       /* ignore */
     }
     const target = e.target as HTMLElement
     try {
       target.releasePointerCapture?.(e.pointerId)
-    } catch (err) {
+    } catch {
       /* ignore */
     }
   }
 
   return (
-    <div className="p-6">
-      <header className="flex flex-col gap-4 mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Board Kanban</h1>
-          <p className="text-base text-slate-500 mt-1">Trascina i task tra le colonne per aggiornare lo stato</p>
+    <div className="p-4 sm:p-6 lg:p-8">
+      {success && (
+        <p className="mb-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+          {success}
+        </p>
+      )}
+      <header className="flex flex-col gap-4 mb-4 sm:mb-6">
+        <div className="hidden lg:block">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Board Kanban</h1>
+          <p className="text-sm sm:text-base text-slate-500 mt-1">
+            Trascina i task tra le colonne per aggiornare lo stato
+          </p>
         </div>
-        <div className="flex flex-row items-center gap-3">
-          <div className="relative flex-1 min-w-0 max-w-[48%]">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-800 rounded-lg border border-indigo-100">
+            <Timer className="w-4 h-4 shrink-0" />
+            <span>
+              Tempo totale stimato:{' '}
+              <strong>{stats.totalEstimatedFormatted}</strong>
+            </span>
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortField)}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            aria-label="Ordina per"
+          >
+            <option value="default">Ordina: predefinito</option>
+            <option value="priority">Ordina: priorità</option>
+            <option value="dueDate">Ordina: scadenza</option>
+            <option value="estimatedTime">Ordina: tempo stimato</option>
+          </select>
+          {sortBy !== 'default' && (
+            <select
+              value={sortDir}
+              onChange={(e) => setSortDir(e.target.value as SortDir)}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label="Direzione ordinamento"
+            >
+              <option value="asc">Crescente</option>
+              <option value="desc">Decrescente</option>
+            </select>
+          )}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
@@ -197,56 +295,63 @@ export function Board() {
               className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
-          <div className="flex items-center gap-2 shrink-0 ml-4">
-            <button
-              type="button"
-              onClick={() => setShowEstimatedOnly((prev) => !prev)}
-              className={`flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
-                showEstimatedOnly
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <Clock3 className="w-4 h-4" />
-              <span>Tempo stimato</span>
-            </button>
-            <button
-              onClick={() => openCreate('todo')}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nuovo task</span>
-            </button>
-          </div>
+          <select
+            value={favoriteFilter}
+            onChange={(e) => setFavoriteFilter(e.target.value as 'all' | 'favorites')}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white min-w-[10rem]"
+            aria-label="Filtra preferiti"
+          >
+            <option value="all">Tutti i task</option>
+            <option value="favorites">Solo preferiti</option>
+          </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            disabled={categoriesLoading}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white min-w-[10rem]"
+            aria-label="Filtra per categoria"
+          >
+            <option value="">Tutte le categorie</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => openCreate('todo')}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="sm:inline">Nuovo task</span>
+          </button>
         </div>
       </header>
 
-      <div className="relative">
-        <div
-          ref={containerRef}
-          onWheel={onWheel}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerLeave={onPointerUp}
-          className="flex gap-6 overflow-x-auto pb-6 px-6 scrollbar-thin cursor-grab"
-        >
-          <div className="flex min-w-max gap-6">
-            {COLUMNS.map((status) => (
-              <KanbanColumn
-                key={status}
-                status={status}
-                tasks={filteredTasks.filter((t) => t.status === status)}
-                onTaskClick={openEdit}
-                onAddTask={openCreate}
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
-                draggingId={draggingId}
-                onDragStart={setDraggingId}
-              />
-            ))}
-          </div>
-        </div>
+      <div
+        ref={containerRef}
+        onWheel={onWheel}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerUp}
+        className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory scrollbar-thin cursor-grab"
+      >
+        {COLUMNS.map((status) => (
+          <KanbanColumn
+            key={status}
+            status={status}
+            tasks={filteredTasks.filter((t) => t.status === status)}
+            onTaskClick={openEdit}
+            onAddTask={openCreate}
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            draggingId={draggingId}
+            onDragStart={setDraggingId}
+            getCategoryById={getCategoryById}
+            onArchive={handleArchive}
+          />
+        ))}
       </div>
 
       <TaskModal

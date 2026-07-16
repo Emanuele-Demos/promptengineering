@@ -1,16 +1,28 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Kanban, Users, Zap } from 'lucide-react'
+import { LayoutDashboard, Kanban, Users, Zap, ListChecks, FolderOpen, Target, FolderKanban } from 'lucide-react'
+import { NotificationBell } from './NotificationBell'
 
 const links = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
   { to: '/board', label: 'Board', icon: Kanban },
   { to: '/team', label: 'Team', icon: Users },
+  { to: '/gestione_stato', label: 'Stati', icon: ListChecks },
+  { to: '/gestione_categorie', label: 'Categorie', icon: FolderOpen },
+  { to: '/progetti', label: 'Progetti', icon: FolderKanban },
+  { to: '/obiettivi', label: 'Obiettivi', icon: Target },
 ]
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
   '/board': 'Board Kanban',
+  '/archivio': 'Archivio',
+  '/calendario': 'Calendario',
   '/team': 'Team',
+  '/gestione_stato': 'Gestione Stato',
+  '/gestione_categorie': 'Gestione Categorie',
+  '/progetti': 'Progetti',
+  '/notifiche': 'Centro Notifiche',
+  '/obiettivi': 'Obiettivi',
 }
 
 export function MobileHeader() {
@@ -22,10 +34,11 @@ export function MobileHeader() {
       <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
         <Zap className="w-4 h-4 text-white" />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xs text-slate-500 leading-none">TeamFlow</p>
         <h1 className="text-base font-bold text-slate-900 truncate">{title}</h1>
       </div>
+      <NotificationBell />
     </header>
   )
 }

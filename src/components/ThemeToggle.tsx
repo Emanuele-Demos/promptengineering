@@ -15,11 +15,11 @@ export function ThemeToggle() {
   }, [theme])
 
   return (
-    <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+    <div className="theme-toggle-shell inline-flex items-center gap-1 rounded-2xl border p-1 shadow-sm">
       <button
         type="button"
         onClick={() => setTheme('light')}
-        className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${theme === 'light' ? 'bg-[#eef1ff] text-indigo-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+        className={`theme-toggle-button inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${theme === 'light' ? 'theme-toggle-button--active' : ''}`}
         aria-pressed={theme === 'light'}
         title="Tema chiaro"
       >
@@ -29,7 +29,7 @@ export function ThemeToggle() {
       <button
         type="button"
         onClick={() => setTheme('dark')}
-        className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${theme === 'dark' ? 'bg-[#1b2a4a] text-[#dbe7ff] shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
+        className={`theme-toggle-button inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${theme === 'dark' ? 'theme-toggle-button--active' : ''}`}
         aria-pressed={theme === 'dark'}
         title="Tema scuro"
       >

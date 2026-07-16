@@ -147,7 +147,7 @@ export function ProfilePage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                className="app-action-button inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium"
               >
                 <ImagePlus className="h-3.5 w-3.5" />
                 Carica da galleria
@@ -155,7 +155,7 @@ export function ProfilePage() {
               <button
                 type="button"
                 onClick={onResetAvatar}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                className="app-action-button inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Ripristina iniziali
@@ -208,7 +208,7 @@ export function ProfilePage() {
               Tema pagina
             </div>
             <p className="mt-2 text-sm text-slate-800">Configuralo nelle impostazioni account.</p>
-            <Link to="/settings" className="mt-3 inline-flex rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+            <Link to="/settings" className="app-action-button mt-3 inline-flex rounded-lg border px-3 py-1.5 text-xs font-medium">
               Apri impostazioni
             </Link>
           </div>

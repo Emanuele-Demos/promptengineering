@@ -70,7 +70,7 @@ export function getPreviousDateRange(range: DateRange): DateRange {
 }
 
 export function formatAverageCompletionTime(totalMs: number, count: number): string {
-  if (count === 0) return '—'
+  if (count === 0) return '0 min'
   const avgMs = totalMs / count
   const hours = Math.floor(avgMs / (1000 * 60 * 60))
   const days = Math.floor(hours / 24)

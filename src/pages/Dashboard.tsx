@@ -124,7 +124,7 @@ export function Dashboard() {
           delta: null,
         },
         {
-          label: 'Tempo medio di completamento',
+          label: 'Tempo medio comp.',
           value: statistics.averageCompletionTime,
           icon: Clock,
           color: 'text-teal-600 bg-teal-50',
@@ -208,7 +208,7 @@ export function Dashboard() {
           : statCards.map(({ label, value, icon: Icon, color, delta }) => (
               <div
                 key={label}
-                className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col justify-between shadow-sm"
+                className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col justify-between shadow-sm min-h-[11rem] overflow-hidden"
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className={`p-2 rounded-lg ${color}`}>
@@ -225,9 +225,17 @@ export function Dashboard() {
                     </span>
                   )}
                 </div>
-                <div>
-                  <p className={`font-bold text-slate-900 ${typeof value === 'string' && value.includes(' ') ? 'text-base leading-snug' : 'text-2xl'}`}>{value}</p>
-                  <p className="text-xs text-slate-400 mt-1 font-medium uppercase tracking-wider leading-tight">
+                <div className="min-w-0">
+                  <p className={`font-bold text-slate-900 break-words ${typeof value === 'string' && value.includes(' ') ? 'text-base leading-snug' : 'text-2xl leading-none'}`}>{value}</p>
+                  <p
+                    className="text-xs text-slate-400 mt-1 font-medium uppercase tracking-wider leading-tight break-words"
+                    style={{
+                      display: '-webkit-box',
+                      WebkitBoxOrient: 'vertical',
+                      WebkitLineClamp: 2,
+                      overflow: 'hidden',
+                    }}
+                  >
                     {label}
                   </p>
                 </div>

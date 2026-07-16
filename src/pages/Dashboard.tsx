@@ -181,10 +181,10 @@ export function Dashboard() {
           <button
             type="button"
             onClick={() => refresh()}
-            className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+            className="group p-2 rounded-lg border border-slate-200 text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:border-[#2b3f68] hover:bg-[#1b2a4a] hover:text-[#dbe7ff] hover:shadow-[0_12px_24px_rgba(15,23,42,0.28)] active:translate-y-0 active:scale-100"
             title="Aggiorna statistiche"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : 'transition-transform duration-500 group-hover:rotate-180'}`} />
           </button>
         </div>
       </header>

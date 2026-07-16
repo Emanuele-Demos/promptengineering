@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState, useRef } from 'react'
-import { Plus, Search, Timer } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Search, Timer } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import type { Task, TaskPriority, TaskStatus } from '../types'
 import { useApp } from '../store/AppContext'
@@ -150,6 +150,7 @@ export function Board() {
   const isPotentialPanRef = useRef(false)
   const dragStartedRef = useRef(false)
   const dragListenerRef = useRef<((e: Event) => void) | null>(null)
+  const previousUserSelectRef = useRef('')
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = containerRef.current
@@ -184,6 +185,8 @@ export function Board() {
       if (!pointerType || pointerType === 'mouse') {
         el.style.touchAction = 'none'
         el.style.cursor = 'grabbing'
+        previousUserSelectRef.current = document.body.style.userSelect
+        document.body.style.userSelect = 'none'
       }
     } catch {
       /* ignore */
@@ -228,6 +231,7 @@ export function Board() {
         el.style.touchAction = ''
         el.style.cursor = 'grab'
       }
+      document.body.style.userSelect = previousUserSelectRef.current
     } catch {
       /* ignore */
     }
@@ -239,19 +243,51 @@ export function Board() {
     }
   }
 
+  const slideColumns = (direction: 'left' | 'right') => {
+    const el = containerRef.current
+    if (!el) return
+    const step = 336
+    el.scrollBy({
+      left: direction === 'right' ? step : -step,
+      behavior: 'smooth',
+    })
+  }
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="board-page rounded-3xl p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full">
       {success && (
         <p className="mb-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
           {success}
         </p>
       )}
       <header className="flex flex-col gap-4 mb-4 sm:mb-6">
-        <div className="hidden lg:block">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Board Kanban</h1>
-          <p className="text-sm sm:text-base text-slate-500 mt-1">
-            Trascina i task tra le colonne per aggiornare lo stato
-          </p>
+        <div className="hidden lg:flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Board Kanban</h1>
+            <p className="text-sm sm:text-base text-slate-500 mt-1">
+              Trascina i task tra le colonne per aggiornare lo stato
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => slideColumns('left')}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+              aria-label="Scorri colonne a sinistra"
+              title="Scorri a sinistra"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => slideColumns('right')}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+              aria-label="Scorri colonne a destra"
+              title="Scorri a destra"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-800 rounded-lg border border-indigo-100">
@@ -335,7 +371,7 @@ export function Board() {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerUp}
-        className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory scrollbar-thin cursor-grab"
+        className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory scrollbar-thin cursor-grab scroll-smooth select-none"
       >
         {COLUMNS.map((status) => (
           <KanbanColumn

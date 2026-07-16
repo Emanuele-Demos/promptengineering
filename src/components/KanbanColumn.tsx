@@ -33,7 +33,7 @@ export function KanbanColumn({
 
   return (
     <div
-      className={`flex flex-col w-80 shrink-0 snap-start rounded-xl border ${style.border} ${style.bg}`}
+      className={`kanban-column kanban-column--${status} flex flex-col w-80 shrink-0 snap-start rounded-xl border ${style.border} ${style.bg}`}
       onDragOver={onDragOver}
       onDrop={(e) => {
         e.preventDefault()
@@ -45,13 +45,13 @@ export function KanbanColumn({
           <h3 className={`text-sm font-semibold ${style.text}`}>
             {STATUS_LABELS[status]}
           </h3>
-          <span className="px-1.5 py-0.5 bg-white/80 rounded text-xs font-medium text-slate-600">
+          <span className="kanban-column-count px-1.5 py-0.5 bg-white/80 rounded text-xs font-medium text-slate-600">
             {tasks.length}
           </span>
         </div>
         <button
           onClick={() => onAddTask(status)}
-          className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-white/60 transition-colors"
+          className="kanban-column-add p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-white/60 transition-colors"
           title="Aggiungi task"
         >
           <Plus className="w-4 h-4" />

@@ -19,6 +19,8 @@ import { GestioneProgetti } from "./pages/GestioneProgetti";
 import { DettaglioProgetto } from "./pages/DettaglioProgetto";
 import { Archivio } from "./pages/Archivio";
 import { CalendarPage } from "./pages/CalendarPage";
+import { ProfilePage } from "./pages/ProfilePage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 export default function App() {
   return (
@@ -47,6 +49,8 @@ export default function App() {
               <Route path="archivio" element={<Archivio />} />
               <Route path="calendario" element={<CalendarPage />} />
               <Route path="team" element={<Team />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="settings" element={<SettingsPage />} />
               <Route path="gestione_stato" element={<GestioneStato />} />
               <Route path="gestione_categorie" element={<GestioneCategorie />} />
               <Route path="progetti" element={<GestioneProgetti />} />

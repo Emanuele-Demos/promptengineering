@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getStatistics } from '../api/statistics.js'
 import type { StatisticsData, StatisticsFilter } from '../types'
 
@@ -14,26 +14,36 @@ export function useStatistics(options: UseStatisticsOptions = {}) {
   const { filter = '7d', from, to } = options
   const [data, setData] = useState<StatisticsData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
+  const hasLoadedRef = useRef(false)
 
   const refresh = useCallback(async () => {
     setError('')
+    if (hasLoadedRef.current) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
+
     try {
       const result = (await getStatistics({ filter, from, to })) as StatisticsData
       setData(result)
+      hasLoadedRef.current = true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Errore imprevisto')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [filter, from, to])
 
   useEffect(() => {
-    setLoading(true)
+    hasLoadedRef.current = false
     refresh()
     const interval = setInterval(refresh, POLL_MS)
     return () => clearInterval(interval)
   }, [refresh])
 
-  return { data, loading, error, refresh }
+  return { data, loading, refreshing, error, refresh }
 }

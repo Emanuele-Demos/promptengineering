@@ -61,7 +61,7 @@ export function Dashboard() {
   const [filter, setFilter] = useState<StatisticsFilter>('7d')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
-  const { data: statistics, loading, error, refresh } = useStatistics({
+  const { data: statistics, loading, refreshing, error, refresh } = useStatistics({
     filter,
     from: filter === 'custom' ? customFrom : undefined,
     to: filter === 'custom' ? customTo : undefined,
@@ -183,10 +183,11 @@ export function Dashboard() {
           <button
             type="button"
             onClick={() => refresh()}
-            className="group p-2 rounded-lg border border-slate-200 text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:border-[#2b3f68] hover:bg-[#1b2a4a] hover:text-[#dbe7ff] hover:shadow-[0_12px_24px_rgba(15,23,42,0.28)] active:translate-y-0 active:scale-100"
+            data-refreshing={loading || refreshing ? 'true' : 'false'}
+            className="stats-refresh-button app-action-button group flex h-11 w-11 items-center justify-center rounded-2xl border"
             title="Aggiorna statistiche"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : 'transition-transform duration-500 group-hover:rotate-180'}`} />
+            <RefreshCw className="w-4 h-4 stats-refresh-icon transition-transform duration-500" />
           </button>
         </div>
       </header>
@@ -197,18 +198,38 @@ export function Dashboard() {
         </p>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div
+        className={`stats-cards-grid grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 ${
+          refreshing ? 'stats-cards-grid--refreshing' : ''
+        }`}
+      >
         {loading && !statistics
           ? Array.from({ length: 7 }).map((_, i) => (
               <div
                 key={i}
-                className="bg-white rounded-xl border border-slate-200 p-4 h-28 animate-pulse"
+                className={`bg-white rounded-xl border border-slate-200 p-4 h-28 animate-pulse ${
+                  i === 3
+                    ? 'xl:col-start-4 xl:row-start-1 xl:row-span-2 xl:h-full'
+                    : i === 5
+                      ? 'xl:col-start-2 xl:row-start-2'
+                      : i === 6
+                        ? 'max-[1189px]:md:col-span-3 xl:col-span-1 xl:col-start-3 xl:row-start-2'
+                        : ''
+                }`}
               />
             ))
-          : statCards.map(({ label, value, icon: Icon, color, delta }) => (
+          : statCards.map(({ label, value, icon: Icon, color, delta }, index) => (
               <div
                 key={label}
-                className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col justify-between shadow-sm min-h-[11rem] overflow-hidden"
+                className={`stats-card bg-white rounded-xl border border-slate-200 p-4 flex flex-col justify-between shadow-sm min-h-[11rem] overflow-hidden ${
+                  index === 3
+                    ? 'xl:col-start-4 xl:row-start-1 xl:row-span-2'
+                    : index === 5
+                      ? 'xl:col-start-2 xl:row-start-2'
+                      : index === 6
+                        ? 'max-[1189px]:md:col-span-3 xl:col-span-1 xl:col-start-3 xl:row-start-2'
+                        : ''
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className={`p-2 rounded-lg ${color}`}>

@@ -239,12 +239,67 @@
     backdrop-filter: blur(8px) saturate(1.15);
     -webkit-backdrop-filter: blur(8px) saturate(1.15);
   }
+
+  .stats-refresh-button {
+    border-color: #cbd5e1;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+
+  .theme-dark .stats-refresh-button {
+    border-color: #334155;
+    background: #0f172a;
+  }
+
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 transparent;
+  }
+
+  .stats-refresh-icon {
+    transform-origin: center;
+  }
+
+  .stats-refresh-button:hover .stats-refresh-icon {
+    transform: rotate(180deg);
+  }
+
+  .stats-refresh-button[data-refreshing='true'] .stats-refresh-icon {
+    animation: stats-refresh-spin 0.9s linear infinite;
+  }
+
+  .stats-cards-grid--refreshing > .stats-card {
+    animation: stats-card-alpha-refresh 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .stats-cards-grid--refreshing > .stats-card:nth-child(1) {
+    animation-delay: 0s;
+  }
+
+  .stats-cards-grid--refreshing > .stats-card:nth-child(2) {
+    animation-delay: 0.06s;
+  }
+
+  .stats-cards-grid--refreshing > .stats-card:nth-child(3) {
+    animation-delay: 0.12s;
+  }
+
+  .stats-cards-grid--refreshing > .stats-card:nth-child(4) {
+    animation-delay: 0.18s;
+  }
+
+  .stats-cards-grid--refreshing > .stats-card:nth-child(5) {
+    animation-delay: 0s;
+  }
+
+  .stats-cards-grid--refreshing > .stats-card:nth-child(6) {
+    animation-delay: 0.06s;
+  }
+
+  .stats-cards-grid--refreshing > .stats-card:nth-child(7) {
+    animation-delay: 0.12s;
   }
 
   .safe-top {
@@ -257,6 +312,38 @@
 
   .login-card-enter {
     animation: login-card-in 0.45s ease-out both;
+  }
+
+  @keyframes stats-refresh-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes stats-card-alpha-refresh {
+    0% {
+      opacity: 1;
+      filter: brightness(1);
+      transform: translateX(0);
+    }
+    35% {
+      opacity: 0.42;
+      filter: brightness(0.94);
+      transform: translateX(6px);
+    }
+    68% {
+      opacity: 0.9;
+      filter: brightness(0.985);
+      transform: translateX(-1px);
+    }
+    100% {
+      opacity: 1;
+      filter: brightness(1);
+      transform: translateX(0);
+    }
   }
 
   @keyframes login-card-in {
@@ -305,6 +392,17 @@
   .theme-dark .shadow-xl,
   .theme-dark .shadow-2xl {
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  .app-layout-shell {
+    display: flex;
+    justify-content: center;
+  }
+
+  .app-layout-shell > div {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
   }
 
   .theme-dark .app-layout-shell {

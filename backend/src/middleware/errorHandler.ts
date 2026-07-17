@@ -18,6 +18,14 @@ export function errorHandler(
     return
   }
 
+  if (
+    err.message.includes('Formato immagine non supportato') ||
+    err.message.includes('Nessuna immagine caricata')
+  ) {
+    res.status(400).json({ message: err.message })
+    return
+  }
+
   if (err.message.includes('UNIQUE constraint failed')) {
     const message = err.message.includes('categories.name')
       ? 'Esiste già una categoria con questo nome'

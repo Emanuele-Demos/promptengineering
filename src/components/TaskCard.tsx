@@ -136,6 +136,7 @@ export function TaskCard({
                 <MemberAvatar
                   name={assignee.name}
                   color={assignee.color}
+                  avatarUrl={assignee.avatarUrl}
                   size="sm"
                 />
               )}

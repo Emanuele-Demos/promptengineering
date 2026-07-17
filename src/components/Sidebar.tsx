@@ -17,6 +17,7 @@ import { useProjects } from '../hooks/useProjects'
 import { useAuth } from '../context/AuthContext'
 import { NotificationBell } from './NotificationBell'
 import { UserProfileModal } from './UserProfileModal'
+import { MemberAvatar } from './MemberAvatar'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -122,12 +123,12 @@ export function Sidebar() {
               className="flex w-full items-center gap-3 px-1 py-1 rounded-lg hover:bg-slate-50 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               aria-label="Apri profilo utente"
             >
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0"
-                style={{ backgroundColor: user.color }}
-              >
-                {user.name.charAt(0)}
-              </div>
+              <MemberAvatar
+                name={user.name}
+                color={user.color}
+                avatarUrl={user.avatarUrl}
+                size="md"
+              />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
                 <p className="text-xs text-slate-500 truncate">{user.email}</p>

@@ -293,7 +293,12 @@ export function Dashboard() {
                       </div>
                     </div>
                     {assignee && (
-                      <MemberAvatar name={assignee.name} color={assignee.color} size="sm" />
+                      <MemberAvatar
+                        name={assignee.name}
+                        color={assignee.color}
+                        avatarUrl={assignee.avatarUrl}
+                        size="sm"
+                      />
                     )}
                   </div>
                 )
@@ -320,7 +325,12 @@ export function Dashboard() {
                         </p>
                       </div>
                       {assignee && (
-                        <MemberAvatar name={assignee.name} color={assignee.color} size="sm" />
+                        <MemberAvatar
+                        name={assignee.name}
+                        color={assignee.color}
+                        avatarUrl={assignee.avatarUrl}
+                        size="sm"
+                      />
                       )}
                     </div>
                   )
@@ -354,7 +364,11 @@ export function Dashboard() {
             <div className="divide-y divide-slate-100">
               {memberWorkload.map(({ member, active, done }) => (
                 <div key={member.id} className="flex items-center gap-3 p-4">
-                  <MemberAvatar name={member.name} color={member.color} />
+                  <MemberAvatar
+                    name={member.name}
+                    color={member.color}
+                    avatarUrl={member.avatarUrl}
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-900 truncate">{member.name}</p>
                     <p className="text-xs text-slate-500">{member.role}</p>

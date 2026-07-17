@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string
   role: string
   color: string
+  avatarUrl: string | null
 }
 
 export interface LoginResponse {
@@ -52,3 +53,15 @@ export declare function resetPassword(params: {
   token: string
   password: string
 }): Promise<MessageResponse>
+
+export interface AvatarResponse {
+  user: AuthUser
+  message: string
+}
+
+export declare function uploadAvatar(params: {
+  token: string
+  file: File
+}): Promise<AvatarResponse>
+
+export declare function deleteAvatar(token: string): Promise<AvatarResponse>

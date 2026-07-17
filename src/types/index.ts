@@ -7,6 +7,7 @@ export interface TeamMember {
   email: string
   role: string
   color: string
+  avatarUrl?: string | null
 }
 
 export type GoalType = 'daily' | 'weekly'

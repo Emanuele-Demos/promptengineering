@@ -425,6 +425,10 @@ export async function runMigrations(db: Database): Promise<void> {
     `)
   }
 
+  if (!(await columnExists(db, 'members', 'avatarPath'))) {
+    await db.exec(`ALTER TABLE members ADD COLUMN avatarPath TEXT`)
+  }
+
   const roleByFirstName: Record<string, CompanyRole> = {
     lorenzo: 'Developer',
     mario: 'QA Engineer',

@@ -18,6 +18,7 @@ import { generateRandomLastName } from '../utils/randomLastName'
 import { buildInstitutionalEmail } from '../utils/institutionalEmail'
 import { parseUserIdFromTokenSub } from '../utils/memberId'
 import { createOnboardingTaskForMember } from './onboardingService'
+import { toMemberAvatarUrl } from '../utils/memberAvatar'
 
 export interface AuthMember extends TeamMember {
   password: string
@@ -25,6 +26,7 @@ export interface AuthMember extends TeamMember {
   lastName?: string
   username?: string | null
   isActive?: number
+  avatarPath?: string | null
 }
 
 export interface AuthUser {
@@ -35,6 +37,7 @@ export interface AuthUser {
   email: string
   role: string
   color: string
+  avatarUrl: string | null
 }
 
 function toAuthUser(member: {
@@ -45,6 +48,7 @@ function toAuthUser(member: {
   color: string
   firstName?: string | null
   lastName?: string | null
+  avatarPath?: string | null
 }): AuthUser {
   const parts = member.name.trim().split(/\s+/)
   return {
@@ -55,6 +59,7 @@ function toAuthUser(member: {
     email: member.email,
     role: member.role,
     color: member.color,
+    avatarUrl: toMemberAvatarUrl(member.avatarPath),
   }
 }
 
@@ -111,7 +116,7 @@ export async function getMemberByEmail(
 ): Promise<AuthMember | undefined> {
   const connection = db ?? (await getDatabase())
   return connection.get<AuthMember>(
-    `SELECT id, name, firstName, lastName, email, role, color, password, isActive
+    `SELECT id, name, firstName, lastName, email, role, color, password, isActive, avatarPath
      FROM members WHERE LOWER(email) = LOWER(?)`,
     [email.trim()]
   )
@@ -138,8 +143,9 @@ export async function getAuthUserById(id: number, db?: Database): Promise<AuthUs
     email: string
     role: string
     color: string
+    avatarPath: string | null
   }>(
-    `SELECT id, name, firstName, lastName, email, role, color FROM members WHERE id = ?`,
+    `SELECT id, name, firstName, lastName, email, role, color, avatarPath FROM members WHERE id = ?`,
     [id]
   )
   return row ? toAuthUser(row) : undefined
@@ -241,6 +247,7 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
     email,
     role: input.role,
     color,
+    avatarUrl: null,
   }
 
   const result: RegisterResult = {

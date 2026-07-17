@@ -193,7 +193,12 @@ export function Team() {
                 className="bg-white rounded-xl border border-slate-200 p-5 hover:border-indigo-200 hover:shadow-sm transition-all"
               >
                 <div className="flex items-start gap-4">
-                  <MemberAvatar name={member.name} color={member.color} size="lg" />
+                  <MemberAvatar
+                    name={member.name}
+                    color={member.color}
+                    avatarUrl={member.avatarUrl}
+                    size="lg"
+                  />
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-slate-900">{member.name}</h3>
                     <p className="text-sm text-indigo-600">{member.role}</p>

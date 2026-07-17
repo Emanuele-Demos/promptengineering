@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS members (
     email TEXT NOT NULL UNIQUE,
     role TEXT NOT NULL DEFAULT 'User',
     color TEXT NOT NULL,
+    avatarPath TEXT,
     password TEXT,
     isActive INTEGER NOT NULL DEFAULT 1,
     createdAt TEXT NOT NULL DEFAULT (datetime('now')),

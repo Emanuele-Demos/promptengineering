@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { login as loginApi, register as registerApi, fetchCurrentUser } from '../api/auth.js'
+import { login as loginApi, register as registerApi, fetchCurrentUser, uploadAvatar as uploadAvatarApi, deleteAvatar as deleteAvatarApi } from '../api/auth.js'
 import {
   clearAuth,
   getAuthToken,
@@ -28,6 +28,8 @@ interface AuthContextValue {
     password: string
   }) => Promise<{ message: string; autoLoggedIn: boolean; onboardingTask?: { id: string; title: string } }>
   logout: () => void
+  uploadAvatar: (file: File) => Promise<void>
+  removeAvatar: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -113,6 +115,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  const uploadAvatar = useCallback(async (file: File) => {
+    const token = getAuthToken()
+    if (!token) {
+      throw new Error('Sessione scaduta')
+    }
+
+    const { user: updatedUser } = await uploadAvatarApi({ token, file })
+    const rememberMe = localStorage.getItem('teamflow-remember-me') === 'true'
+    saveAuth({ token, user: updatedUser, rememberMe })
+    setUser(updatedUser)
+  }, [])
+
+  const removeAvatar = useCallback(async () => {
+    const token = getAuthToken()
+    if (!token) {
+      throw new Error('Sessione scaduta')
+    }
+
+    const { user: updatedUser } = await deleteAvatarApi(token)
+    const rememberMe = localStorage.getItem('teamflow-remember-me') === 'true'
+    saveAuth({ token, user: updatedUser, rememberMe })
+    setUser(updatedUser)
+  }, [])
+
   const value = useMemo(
     () => ({
       user,
@@ -121,8 +147,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       logout,
+      uploadAvatar,
+      removeAvatar,
     }),
-    [user, loading, login, register, logout],
+    [user, loading, login, register, logout, uploadAvatar, removeAvatar],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

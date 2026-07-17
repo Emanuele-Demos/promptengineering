@@ -94,3 +94,39 @@ export async function resetPassword({ token, password }) {
 
   return handleResponse(response)
 }
+
+export async function uploadAvatar({ token, file }) {
+  const formData = new FormData()
+  formData.append('avatar', file)
+
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/me/avatar`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  return handleResponse(response)
+}
+
+export async function deleteAvatar(token) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/me/avatar`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+
+  return handleResponse(response)
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   CheckCircle2,
   Clock,
@@ -11,12 +11,13 @@ import {
 import { Link } from 'react-router-dom'
 import { useApp } from '../store/AppContext'
 import { useGoals } from '../hooks/useGoals'
-import { useStatistics } from '../hooks/useStatistics'
+import { useCategories } from '../hooks/useCategories'
 import { GoalProgressCard } from '../components/GoalProgressCard'
 import { STATUS_LABELS, type StatisticsFilter } from '../types'
 import { MemberAvatar } from '../components/MemberAvatar'
 import { PriorityBadge } from '../components/PriorityBadge'
 import { formatDate, statusStyles } from '../utils/helpers'
+import { computeTeamCharts, computeTeamPeriodStats } from '../utils/teamStats'
 import {
   LineChart,
   Line,
@@ -54,17 +55,45 @@ const FILTER_OPTIONS: { value: StatisticsFilter; label: string }[] = [
 ]
 
 export function Dashboard() {
-  const { tasks, members, stats, overdueTasks, getMember } = useApp()
+  const { tasks, members, stats, overdueTasks, getMember, loading: appLoading, refreshData } = useApp()
   const activeTasks = tasks.filter((t) => !t.archived)
   const { daily, weekly, loading: goalsLoading } = useGoals()
+  const { getCategoryById, loading: categoriesLoading } = useCategories()
   const [filter, setFilter] = useState<StatisticsFilter>('7d')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
-  const { data: statistics, loading, error, refresh } = useStatistics({
-    filter,
-    from: filter === 'custom' ? customFrom : undefined,
-    to: filter === 'custom' ? customTo : undefined,
-  })
+  const [refreshing, setRefreshing] = useState(false)
+
+  const periodStats = useMemo(
+    () => computeTeamPeriodStats(activeTasks, filter, customFrom, customTo),
+    [activeTasks, filter, customFrom, customTo],
+  )
+
+  const teamCharts = useMemo(
+    () =>
+      computeTeamCharts(
+        activeTasks,
+        (categoryId) => {
+          const category = getCategoryById(categoryId)
+          return category?.name ?? 'Senza categoria'
+        },
+        filter,
+        customFrom,
+        customTo,
+      ),
+    [activeTasks, getCategoryById, filter, customFrom, customTo],
+  )
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      await refreshData()
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const chartsLoading = (appLoading && tasks.length === 0) || categoriesLoading
 
   const recentTasks = [...activeTasks]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -78,68 +107,58 @@ export function Dashboard() {
 
   const completionRate = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0
 
-  const statCards = statistics
-    ? [
-        {
-          label: 'Task completati oggi',
-          value: statistics.completedToday,
-          icon: CheckCircle2,
-          color: 'text-emerald-600 bg-emerald-50',
-          delta: null as number | null,
-        },
-        {
-          label: 'Task completati questa settimana',
-          value: statistics.completedWeek,
-          icon: TrendingUp,
-          color: 'text-indigo-600 bg-indigo-50',
-          delta: statistics.previousPeriod?.changePercent ?? null,
-        },
-        {
-          label: 'Task completati questo mese',
-          value: statistics.completedMonth,
-          icon: CheckCircle2,
-          color: 'text-blue-600 bg-blue-50',
-          delta: null,
-        },
-        {
-          label: 'Task in ritardo',
-          value: statistics.overdue,
-          icon: AlertTriangle,
-          color: statistics.overdue > 0 ? 'text-red-600 bg-red-50' : 'text-slate-500 bg-slate-50',
-          delta: null,
-        },
-        {
-          label: 'Task aperti',
-          value: statistics.open,
-          icon: Clock,
-          color: 'text-amber-600 bg-amber-50',
-          delta: null,
-        },
-        {
-          label: 'Tempo totale stimato',
-          value: stats.totalEstimatedFormatted,
-          icon: Timer,
-          color: 'text-violet-600 bg-violet-50',
-          delta: null,
-        },
-        {
-          label: 'Tempo medio di completamento',
-          value: statistics.averageCompletionTime,
-          icon: Clock,
-          color: 'text-teal-600 bg-teal-50',
-          delta: null,
-        },
-      ]
-    : []
+  const statCards = [
+    {
+      label: periodStats.completedLabel,
+      value: periodStats.completedInPeriod,
+      icon: CheckCircle2,
+      color: 'text-emerald-600 bg-emerald-50',
+      delta: periodStats.changePercent,
+    },
+    {
+      label: periodStats.createdLabel,
+      value: periodStats.createdInPeriod,
+      icon: TrendingUp,
+      color: 'text-indigo-600 bg-indigo-50',
+      delta: null,
+    },
+    {
+      label: 'Task in ritardo (team)',
+      value: stats.overdue,
+      icon: AlertTriangle,
+      color: stats.overdue > 0 ? 'text-red-600 bg-red-50' : 'text-slate-500 bg-slate-50',
+      delta: null,
+    },
+    {
+      label: 'Task aperti (team)',
+      value: stats.open,
+      icon: Clock,
+      color: 'text-amber-600 bg-amber-50',
+      delta: null,
+    },
+    {
+      label: 'Tempo totale stimato (team)',
+      value:
+        stats.openTasksWithEstimate > 0
+          ? `${stats.totalEstimatedFormatted} su ${stats.openTasksWithEstimate} task`
+          : stats.totalEstimatedFormatted,
+      icon: Timer,
+      color: 'text-violet-600 bg-violet-50',
+      delta: null,
+    },
+    {
+      label: periodStats.averageTimeLabel,
+      value: periodStats.averageCompletionTimeInPeriod,
+      icon: Clock,
+      color: 'text-teal-600 bg-teal-50',
+      delta: null,
+    },
+  ]
 
-  const weeklyChartData =
-    statistics?.weeklyTrend.map((item) => ({ name: item.day, task: item.completed })) ?? []
-  const monthlyChartData =
-    statistics?.monthlyCompletions.map((item) => ({ name: item.month, task: item.completed })) ?? []
-  const categoryChartData =
-    statistics?.tasksByCategory.map((item) => ({ name: item.category, value: item.count })) ?? []
-  const priorityChartData =
-    statistics?.tasksByPriority.map((item) => ({ name: item.priority, value: item.count })) ?? []
+  const trendChartData = teamCharts.completionTrend
+  const bucketsChartData = teamCharts.completionBuckets
+  const categoryChartData = teamCharts.tasksByCategory
+  const priorityChartData = teamCharts.tasksByPriority
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-8">
@@ -147,7 +166,7 @@ export function Dashboard() {
         <div className="hidden lg:block">
           <h1 className="text-2xl font-bold text-slate-900">Statistiche e Produttività</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Dashboard interattiva con KPI e grafici aggiornati dal backend.
+            KPI e grafici sincronizzati con Board, calendario e team.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -155,6 +174,7 @@ export function Dashboard() {
             value={filter}
             onChange={(e) => setFilter(e.target.value as StatisticsFilter)}
             className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            title="Filtra KPI e grafici per periodo"
           >
             {FILTER_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -169,35 +189,38 @@ export function Dashboard() {
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
                 className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                aria-label="Data inizio periodo"
               />
               <input
                 type="date"
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
                 className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                aria-label="Data fine periodo"
               />
             </>
           )}
           <button
             type="button"
-            onClick={() => refresh()}
+            onClick={() => handleRefresh()}
             className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
-            title="Aggiorna statistiche"
+            title="Aggiorna dati team"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </header>
 
-      {error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-          {error}
+      {periodStats.customRangeIncomplete && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          Seleziona data inizio e fine per il periodo personalizzato. Intanto viene usato il default
+          di 7 giorni.
         </p>
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {loading && !statistics
-          ? Array.from({ length: 7 }).map((_, i) => (
+        {appLoading && tasks.length === 0
+          ? Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
                 className="bg-white rounded-xl border border-slate-200 p-4 h-28 animate-pulse"
@@ -310,7 +333,7 @@ export function Dashboard() {
             <section className="bg-red-50 rounded-xl border border-red-200 shadow-sm">
               <div className="p-4 border-b border-red-100">
                 <h2 className="font-semibold text-red-800 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" /> Task in ritardo ({overdueTasks.length})
+                  <AlertTriangle className="w-4 h-4" /> Task in ritardo del team ({overdueTasks.length})
                 </h2>
               </div>
               <div className="divide-y divide-red-100">
@@ -387,10 +410,10 @@ export function Dashboard() {
       <div className="pt-6 border-t border-slate-200">
         <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-indigo-600" />
-          Grafici analitici di produttività
+          Grafici analitici di produttività (team)
         </h2>
 
-        {loading && !statistics ? (
+        {chartsLoading ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
@@ -402,10 +425,10 @@ export function Dashboard() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-700 mb-4">Andamento settimanale</h3>
+              <h3 className="text-sm font-semibold text-slate-700 mb-4">{teamCharts.trendTitle}</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={weeklyChartData}>
+                  <LineChart data={trendChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
                     <YAxis stroke="#94a3b8" fontSize={12} allowDecimals={false} />
@@ -425,10 +448,10 @@ export function Dashboard() {
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-700 mb-4">Completamenti mensili</h3>
+              <h3 className="text-sm font-semibold text-slate-700 mb-4">{teamCharts.bucketsTitle}</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyChartData}>
+                  <BarChart data={bucketsChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
                     <YAxis stroke="#94a3b8" fontSize={12} allowDecimals={false} />
@@ -447,7 +470,7 @@ export function Dashboard() {
 
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center">
               <h3 className="text-sm font-semibold text-slate-700 mb-4 w-full text-left">
-                Task per categoria
+                Task per categoria (attività nel periodo)
               </h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -477,7 +500,7 @@ export function Dashboard() {
 
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center">
               <h3 className="text-sm font-semibold text-slate-700 mb-4 w-full text-left">
-                Task per priorità
+                Task per priorità (attività nel periodo)
               </h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">

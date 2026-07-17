@@ -150,6 +150,12 @@ export function Board() {
             <span>
               Tempo totale stimato:{' '}
               <strong>{stats.totalEstimatedFormatted}</strong>
+              {stats.openTasksWithEstimate > 0 && (
+                <>
+                  {' '}
+                  su <strong>{stats.openTasksWithEstimate}</strong> task
+                </>
+              )}
             </span>
           </div>
           <select

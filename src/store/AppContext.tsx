@@ -18,6 +18,12 @@ import type {
 import { MEMBER_COLORS } from '../types'
 import { formatEstimatedTimeLong } from '../utils/estimatedTime'
 import {
+  computeAverageCompletionMs,
+  countCompletedInRange,
+  formatAverageCompletionTime,
+  getTeamPeriodRanges,
+} from '../utils/teamStats'
+import {
   archiveTaskApi,
   deleteTaskPermanent,
   getArchivedTasks,
@@ -50,8 +56,12 @@ interface AppContextValue extends AppState {
   stats: {
     total: number
     done: number
+    open: number
     inProgress: number
     overdue: number
+    completedToday: number
+    completedWeek: number
+    completedMonth: number
     completedOnTime: number
     completedLate: number
     inReview: number
@@ -59,6 +69,7 @@ interface AppContextValue extends AppState {
     totalEstimatedMinutes: number
     totalEstimatedFormatted: string
     openTasksWithEstimate: number
+    averageCompletionTime: string
   }
 }
 
@@ -314,12 +325,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         (sum, t) => sum + (t.estimatedTime ?? 0),
         0,
       )
+      const { todayStart, weekStart, monthStart, end } = getTeamPeriodRanges()
+      const averageCompletionMs = computeAverageCompletionMs(activeTasks)
 
       return {
         total: activeTasks.length,
         done: activeTasks.filter((t) => t.status === 'done').length,
+        open: openTasks.length,
         inProgress: activeTasks.filter((t) => t.status === 'in_progress').length,
         overdue: overdueTasks.length,
+        completedToday: countCompletedInRange(activeTasks, todayStart, end),
+        completedWeek: countCompletedInRange(activeTasks, weekStart, end),
+        completedMonth: countCompletedInRange(activeTasks, monthStart, end),
         completedOnTime: activeTasks.filter(
           (t) =>
             t.status === 'done' &&
@@ -336,6 +353,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         totalEstimatedMinutes,
         totalEstimatedFormatted: formatEstimatedTimeLong(totalEstimatedMinutes),
         openTasksWithEstimate: openTasks.filter((t) => (t.estimatedTime ?? 0) > 0).length,
+        averageCompletionTime: formatAverageCompletionTime(
+          averageCompletionMs,
+          activeTasks.filter((t) => t.status === 'done').length,
+        ),
       }
     },
     [activeTasks, overdueTasks],

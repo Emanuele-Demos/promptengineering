@@ -167,7 +167,20 @@ export function Layout() {
                   to="/profile"
                   className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active' : 'border-transparent text-slate-500'}`}
                 >
-                  <UserCircle2 className="mb-1 h-4 w-4" />
+                  <div className="mb-1 flex h-4 w-4 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-[9px] font-semibold text-white">
+                    {avatar?.type === 'image' ? (
+                      <img src={avatar.value} alt="Avatar utente" className="h-full w-full object-cover" />
+                    ) : avatar?.type === 'preset' ? (
+                      <span>{avatar.value}</span>
+                    ) : (
+                      user.name
+                        .split(' ')
+                        .map((part) => part[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()
+                    )}
+                  </div>
                   <span>Profilo</span>
                 </NavLink>
               ) : null}

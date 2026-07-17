@@ -137,10 +137,18 @@ export function Dashboard() {
     statistics?.weeklyTrend.map((item) => ({ name: item.day, task: item.completed })) ?? []
   const monthlyChartData =
     statistics?.monthlyCompletions.map((item) => ({ name: item.month, task: item.completed })) ?? []
-  const categoryChartData =
+  const categoryChartDataRaw =
     statistics?.tasksByCategory.map((item) => ({ name: item.category, value: item.count })) ?? []
-  const priorityChartData =
+  const priorityChartDataRaw =
     statistics?.tasksByPriority.map((item) => ({ name: item.priority, value: item.count })) ?? []
+  const categoryChartData =
+    categoryChartDataRaw.length > 0 ? categoryChartDataRaw : [{ name: 'Nessun dato', value: 1 }]
+  const priorityChartData =
+    priorityChartDataRaw.length > 0 ? priorityChartDataRaw : [{ name: 'Nessun dato', value: 1 }]
+  const categoryChartColors =
+    categoryChartDataRaw.length > 0 ? COLORI_CATEGORIE : ['#cbd5e1']
+  const priorityChartColors =
+    priorityChartDataRaw.length > 0 ? MAPPATURA_COLORI_PRIORITA : { 'Nessun dato': '#cbd5e1' }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-8">
@@ -481,7 +489,7 @@ export function Dashboard() {
                       {categoryChartData.map((_entry, index) => (
                         <Cell
                           key={`cell-cat-${index}`}
-                          fill={COLORI_CATEGORIE[index % COLORI_CATEGORIE.length]}
+                          fill={categoryChartColors[index % categoryChartColors.length]}
                         />
                       ))}
                     </Pie>
@@ -511,7 +519,7 @@ export function Dashboard() {
                       {priorityChartData.map((entry, index) => (
                         <Cell
                           key={`cell-prio-${index}`}
-                          fill={MAPPATURA_COLORI_PRIORITA[entry.name] || '#64748b'}
+                          fill={priorityChartColors[entry.name] || '#64748b'}
                         />
                       ))}
                     </Pie>

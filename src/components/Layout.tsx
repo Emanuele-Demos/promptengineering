@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { CalendarDays, ChevronDown, Home, LayoutGrid, LogOut, Settings, UserCircle2, Users } from 'lucide-react'
+import { CalendarDays, ChevronDown, Home, Hourglass, LayoutGrid, LogOut, Settings, UserCircle2, Users } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { getUserAvatar, type UserAvatarSelection } from '../utils/userAvatar'
+import { getUserAvatar, resolveUserAvatarSrc, type UserAvatarSelection } from '../utils/userAvatar'
 
 export function Layout() {
   const { user, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [avatar, setAvatar] = useState<UserAvatarSelection | null>(null)
+  const avatarSrc = resolveUserAvatarSrc(avatar)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -55,6 +56,10 @@ export function Layout() {
               <CalendarDays className="h-4 w-4" />
               <span>Calendar</span>
             </NavLink>
+            <NavLink to="/scadenze" className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}>
+              <Hourglass className="h-4 w-4" />
+              <span>Scadenze</span>
+            </NavLink>
             <NavLink to="/gestione_stato" className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}>
               <Settings className="h-4 w-4" />
               <span>Gestione Stato</span>
@@ -69,10 +74,8 @@ export function Layout() {
                 className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white/80 p-2.5 text-left shadow-sm transition hover:shadow-md"
               >
                 <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-sm font-semibold text-white">
-                  {avatar?.type === 'image' ? (
-                    <img src={avatar.value} alt="Avatar utente" className="h-full w-full object-cover" />
-                  ) : avatar?.type === 'preset' ? (
-                    <span>{avatar.value}</span>
+                  {avatarSrc ? (
+                    <img src={avatarSrc} alt="Avatar utente" className="h-full w-full object-cover" />
                   ) : (
                     user.name
                       .split(' ')
@@ -144,7 +147,7 @@ export function Layout() {
             <Outlet />
           </main>
 
-          <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/70 bg-white/80 px-3 py-2 backdrop-blur-xl shadow-[0_-10px_40px_-20px_rgba(15,23,42,0.45)] lg:hidden">
+          <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-white/70 bg-white/80 px-3 py-2 backdrop-blur-xl shadow-[0_-10px_40px_-20px_rgba(15,23,42,0.45)] lg:hidden">
             <div className="mx-auto flex max-w-md items-center justify-around gap-1.5">
               <NavLink to="/" end className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active' : 'border-transparent text-slate-500'}`}>
                 <Home className="mb-1 h-4 w-4" />
@@ -162,16 +165,18 @@ export function Layout() {
                 <CalendarDays className="mb-1 h-4 w-4" />
                 <span>Cal.</span>
               </NavLink>
+              <NavLink to="/scadenze" className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active' : 'border-transparent text-slate-500'}`}>
+                <Hourglass className="mb-1 h-4 w-4" />
+                <span>Scad.</span>
+              </NavLink>
               {user ? (
                 <NavLink
                   to="/profile"
                   className={({ isActive }) => `mobile-nav-item flex flex-1 flex-col items-center rounded-2xl border px-2 py-2 text-[11px] font-semibold transition-all duration-200 ${isActive ? 'mobile-nav-item--active' : 'border-transparent text-slate-500'}`}
                 >
                   <div className="mb-1 flex h-4 w-4 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-[9px] font-semibold text-white">
-                    {avatar?.type === 'image' ? (
-                      <img src={avatar.value} alt="Avatar utente" className="h-full w-full object-cover" />
-                    ) : avatar?.type === 'preset' ? (
-                      <span>{avatar.value}</span>
+                    {avatarSrc ? (
+                      <img src={avatarSrc} alt="Avatar utente" className="h-full w-full object-cover" />
                     ) : (
                       user.name
                         .split(' ')

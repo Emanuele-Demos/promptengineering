@@ -21,6 +21,7 @@ import { Archivio } from "./pages/Archivio";
 import { CalendarPage } from "./pages/CalendarPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ScadenzePage } from "./pages/ScadenzePage";
 
 export default function App() {
   return (
@@ -48,6 +49,7 @@ export default function App() {
               <Route path="board" element={<Board />} />
               <Route path="archivio" element={<Archivio />} />
               <Route path="calendario" element={<CalendarPage />} />
+              <Route path="scadenze" element={<ScadenzePage />} />
               <Route path="team" element={<Team />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<SettingsPage />} />

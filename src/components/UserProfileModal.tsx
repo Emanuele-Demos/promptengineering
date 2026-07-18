@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { LogOut, X } from 'lucide-react'
 import type { AuthUser } from '../api/auth.d.ts'
 import { MemberAvatar } from './MemberAvatar'
+import { getUserAvatar, type UserAvatarSelection } from '../utils/userAvatar'
 
 interface UserProfileModalProps {
   user: AuthUser
@@ -25,6 +27,15 @@ function resolveNames(user: AuthUser): { firstName: string; lastName: string } {
 }
 
 export function UserProfileModal({ user, open, onClose, onLogout }: UserProfileModalProps) {
+  const [avatar, setAvatar] = useState<UserAvatarSelection | null>(null)
+
+  useEffect(() => {
+    const syncAvatar = () => setAvatar(getUserAvatar(user.id))
+    syncAvatar()
+    window.addEventListener('teamflow-avatar-updated', syncAvatar)
+    return () => window.removeEventListener('teamflow-avatar-updated', syncAvatar)
+  }, [user.id])
+
   if (!open) return null
 
   const { firstName, lastName } = resolveNames(user)
@@ -58,7 +69,7 @@ export function UserProfileModal({ user, open, onClose, onLogout }: UserProfileM
 
         <div className="p-5 sm:p-6 space-y-5">
           <div className="flex items-center gap-4">
-            <MemberAvatar name={user.name} color={user.color} size="lg" />
+            <MemberAvatar name={user.name} color={user.color} size="lg" avatar={avatar} />
             <div>
               <p className="text-base font-semibold text-slate-900">{user.name}</p>
               <p className="text-sm text-indigo-600">{user.role}</p>

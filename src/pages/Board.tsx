@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useState, useRef } from 'react'
 import { ChevronLeft, ChevronRight, Plus, Search, Timer } from 'lucide-react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import type { Task, TaskPriority, TaskStatus } from '../types'
 import { useApp } from '../store/AppContext'
 import { useCategories } from '../hooks/useCategories'
@@ -290,13 +290,17 @@ export function Board() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-800 rounded-lg border border-indigo-100">
+          <Link
+            to="/scadenze"
+            className="estimated-time-link flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-800 rounded-lg border border-indigo-100 hover:bg-sky-100 hover:border-sky-300 hover:text-sky-900 transition-colors"
+            title="Apri tab Scadenze"
+          >
             <Timer className="w-4 h-4 shrink-0" />
             <span>
               Tempo totale stimato:{' '}
               <strong>{stats.totalEstimatedFormatted}</strong>
             </span>
-          </div>
+          </Link>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortField)}

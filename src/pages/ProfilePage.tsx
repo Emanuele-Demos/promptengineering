@@ -5,11 +5,11 @@ import { useAuth } from '../context/AuthContext'
 import {
   clearUserAvatar,
   getUserAvatar,
+  PROFESSIONAL_AVATAR_PRESETS,
+  resolveUserAvatarSrc,
   saveUserAvatar,
   type UserAvatarSelection,
 } from '../utils/userAvatar'
-
-const AVATAR_PRESETS = ['🙂', '😎', '👩‍💻', '🧑‍💼', '👨‍💻', '🧠', '🚀', '🎯']
 
 export function ProfilePage() {
   const { user } = useAuth()
@@ -19,6 +19,7 @@ export function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const firstName = user?.firstName || user?.name?.split(' ')[0] || 'Non disponibile'
   const lastName = user?.lastName || user?.name?.split(' ').slice(1).join(' ') || 'Non disponibile'
+  const avatarSrc = resolveUserAvatarSrc(avatar)
 
   useEffect(() => {
     if (!user) return
@@ -29,9 +30,9 @@ export function ProfilePage() {
     window.dispatchEvent(new CustomEvent('teamflow-avatar-updated'))
   }
 
-  const onSelectPreset = (preset: string) => {
+  const onSelectPreset = (presetId: string) => {
     if (!user) return
-    const next: UserAvatarSelection = { type: 'preset', value: preset }
+    const next: UserAvatarSelection = { type: 'preset', value: presetId }
     saveUserAvatar(user.id, next)
     setAvatar(next)
     setUploadError('')
@@ -98,10 +99,8 @@ export function ProfilePage() {
             style={{ backgroundColor: user?.color || '#6366f1' }}
             title="Cambia avatar"
           >
-            {avatar?.type === 'image' ? (
-              <img src={avatar.value} alt="Avatar utente" className="h-full w-full object-cover" />
-            ) : avatar?.type === 'preset' ? (
-              <span>{avatar.value}</span>
+            {avatarSrc ? (
+              <img src={avatarSrc} alt="Avatar utente" className="h-full w-full object-cover" />
             ) : user?.name ? (
               user.name
                 .split(' ')
@@ -122,16 +121,17 @@ export function ProfilePage() {
 
         {pickerOpen && (
           <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-700">Scegli avatar</p>
+            <p className="text-sm font-semibold text-slate-700">Scegli avatar professionale</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {AVATAR_PRESETS.map((preset) => (
+              {PROFESSIONAL_AVATAR_PRESETS.map((preset) => (
                 <button
-                  key={preset}
+                  key={preset.id}
                   type="button"
-                  onClick={() => onSelectPreset(preset)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-lg hover:border-indigo-300 hover:shadow-sm"
+                  onClick={() => onSelectPreset(preset.id)}
+                  className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm"
+                  title={preset.label}
                 >
-                  {preset}
+                  <img src={preset.src} alt={preset.label} className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>
